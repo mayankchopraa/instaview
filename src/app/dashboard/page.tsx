@@ -26,18 +26,35 @@ type ProfileLink = {
   url: string;
 };
 
+type OwnProfile = {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+};
+
 export default function DashboardPage() {
   const [analytics, setAnalytics] = useState<AnalyticsRow[]>([]);
+
   const [visitors, setVisitors] = useState<
     Record<string, VisitorProfile>
   >({});
+
   const [profileLinks, setProfileLinks] = useState<
     Record<string, ProfileLink>
   >({});
 
+  const [profile, setProfile] =
+    useState<OwnProfile | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState("");
+  const [copyMessage, setCopyMessage] = useState("");
 
+  /*
+   * LOAD DASHBOARD
+   */
   useEffect(() => {
     loadDashboard();
   }, []);
@@ -47,7 +64,7 @@ export default function DashboardPage() {
       setLoading(true);
 
       /*
-       * Get logged-in user
+       * GET LOGGED-IN USER
        */
       const {
         data: { user },
@@ -60,12 +77,33 @@ export default function DashboardPage() {
 
       setUserEmail(user.email || "");
 
+      /*
+       * LOAD OWN PROFILE
+       */
+      const {
+        data: ownProfile,
+        error: ownProfileError,
+      } = await supabase
+        .from("Profiles")
+        .select(
+          "user_id, username, display_name, bio, avatar_url"
+        )
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (ownProfileError) {
+        console.error(
+          "Own profile error:",
+          ownProfileError
+        );
+      }
+
+      if (ownProfile) {
+        setProfile(ownProfile);
+      }
 
       /*
-       * Get analytics
-       *
-       * IMPORTANT:
-       * viewer_id is now included.
+       * LOAD ANALYTICS
        */
       const {
         data: analyticsData,
@@ -87,125 +125,106 @@ export default function DashboardPage() {
         );
 
         setAnalytics([]);
-        setLoading(false);
-        return;
-      }
+      } else {
+        const rows = analyticsData || [];
 
-      const rows = analyticsData || [];
+        setAnalytics(rows);
 
-      setAnalytics(rows);
-
-
-      /*
-       * Get all logged-in visitor IDs
-       */
-      const viewerIds = Array.from(
-        new Set(
-          rows
-            .filter((item) => item.viewer_id)
-            .map((item) => item.viewer_id as string)
-        )
-      );
-
-
-      /*
-       * Load visitor profiles
-       *
-       * This converts:
-       *
-       * viewer_id
-       *
-       * into:
-       *
-       * Rahul Sharma
-       * @rahul
-       */
-      if (viewerIds.length > 0) {
-        const {
-          data: visitorData,
-          error: visitorError,
-        } = await supabase
-          .from("Profiles")
-          .select(
-            "user_id, username, display_name, avatar_url"
+        /*
+         * GET VISITOR IDS
+         */
+        const viewerIds = Array.from(
+          new Set(
+            rows
+              .filter((item) => item.viewer_id)
+              .map(
+                (item) => item.viewer_id as string
+              )
           )
-          .in("user_id", viewerIds);
+        );
 
-        if (visitorError) {
-          console.error(
-            "Visitor profiles error:",
-            visitorError
-          );
+        /*
+         * LOAD VISITOR PROFILES
+         */
+        if (viewerIds.length > 0) {
+          const {
+            data: visitorData,
+            error: visitorError,
+          } = await supabase
+            .from("Profiles")
+            .select(
+              "user_id, username, display_name, avatar_url"
+            )
+            .in("user_id", viewerIds);
+
+          if (visitorError) {
+            console.error(
+              "Visitor profiles error:",
+              visitorError
+            );
+          }
+
+          if (visitorData) {
+            const visitorMap: Record<
+              string,
+              VisitorProfile
+            > = {};
+
+            visitorData.forEach((visitor) => {
+              visitorMap[visitor.user_id] =
+                visitor;
+            });
+
+            setVisitors(visitorMap);
+          }
         }
 
-        if (visitorData) {
-          const visitorMap: Record<
-            string,
-            VisitorProfile
-          > = {};
+        /*
+         * GET LINK IDS
+         */
+        const linkIds = Array.from(
+          new Set(
+            rows
+              .filter((item) => item.link_id)
+              .map(
+                (item) => item.link_id as string
+              )
+          )
+        );
 
-          visitorData.forEach((visitor) => {
-            visitorMap[visitor.user_id] = visitor;
-          });
+        /*
+         * LOAD LINKS
+         */
+        if (linkIds.length > 0) {
+          const {
+            data: linksData,
+            error: linksError,
+          } = await supabase
+            .from("Links")
+            .select("id, title, url")
+            .in("id", linkIds);
 
-          setVisitors(visitorMap);
+          if (linksError) {
+            console.error(
+              "Links error:",
+              linksError
+            );
+          }
+
+          if (linksData) {
+            const linkMap: Record<
+              string,
+              ProfileLink
+            > = {};
+
+            linksData.forEach((link) => {
+              linkMap[link.id] = link;
+            });
+
+            setProfileLinks(linkMap);
+          }
         }
       }
-
-
-      /*
-       * Get link IDs used in analytics
-       */
-      const linkIds = Array.from(
-        new Set(
-          rows
-            .filter((item) => item.link_id)
-            .map((item) => item.link_id as string)
-        )
-      );
-
-
-      /*
-       * Load actual link names
-       *
-       * This changes:
-       *
-       * Link 1
-       *
-       * into:
-       *
-       * Instagram
-       */
-      if (linkIds.length > 0) {
-        const {
-          data: linksData,
-          error: linksError,
-        } = await supabase
-          .from("Links")
-          .select("id, title, url")
-          .in("id", linkIds);
-
-        if (linksError) {
-          console.error(
-            "Links error:",
-            linksError
-          );
-        }
-
-        if (linksData) {
-          const linkMap: Record<
-            string,
-            ProfileLink
-          > = {};
-
-          linksData.forEach((link) => {
-            linkMap[link.id] = link;
-          });
-
-          setProfileLinks(linkMap);
-        }
-      }
-
     } catch (error) {
       console.error(
         "Dashboard error:",
@@ -216,10 +235,10 @@ export default function DashboardPage() {
     }
   }
 
-
   /*
-   * BASIC ANALYTICS
+   * ANALYTICS
    */
+
   const profileViews = analytics.filter(
     (item) => item.profile_view === true
   ).length;
@@ -233,12 +252,8 @@ export default function DashboardPage() {
   const totalInteractions =
     profileViews + linkClicks;
 
-
   /*
    * IDENTIFIED VISITORS
-   *
-   * Unique logged-in users who viewed
-   * the profile.
    */
   const identifiedViewerIds = Array.from(
     new Set(
@@ -257,7 +272,6 @@ export default function DashboardPage() {
   const identifiedVisitors =
     identifiedViewerIds.length;
 
-
   /*
    * ANONYMOUS VISITS
    */
@@ -267,30 +281,8 @@ export default function DashboardPage() {
       !item.viewer_id
   ).length;
 
-
   /*
-   * UNIQUE VISITORS
-   *
-   * Identified visitors + anonymous
-   * visit sessions.
-   *
-   * Anonymous visits are counted as
-   * visits because we cannot identify
-   * the person.
-   */
-  const uniqueKnownVisitors =
-    identifiedVisitors;
-
-  const totalVisitors =
-    uniqueKnownVisitors +
-    anonymousViews;
-
-
-  /*
-   * RETURNING IDENTIFIED VISITORS
-   *
-   * A logged-in visitor who viewed
-   * the profile more than once.
+   * RETURNING VISITORS
    */
   const viewerVisitCounts: Record<
     string,
@@ -304,26 +296,30 @@ export default function DashboardPage() {
         item.viewer_id
     )
     .forEach((item) => {
-      const id = item.viewer_id as string;
+      const id =
+        item.viewer_id as string;
 
       viewerVisitCounts[id] =
         (viewerVisitCounts[id] || 0) + 1;
     });
 
   const returningVisitors =
-    Object.values(viewerVisitCounts).filter(
+    Object.values(
+      viewerVisitCounts
+    ).filter(
       (count) => count > 1
     ).length;
-
 
   /*
    * CLICK RATE
    */
   const clickRate =
     profileViews > 0
-      ? ((linkClicks / profileViews) * 100).toFixed(1)
+      ? (
+          (linkClicks / profileViews) *
+          100
+        ).toFixed(1)
       : "0.0";
-
 
   /*
    * TOP LINKS
@@ -353,9 +349,8 @@ export default function DashboardPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
 
-
   /*
-   * FORMAT DATE
+   * DATE FORMAT
    */
   function formatDate(date: string) {
     return new Date(date).toLocaleString(
@@ -370,15 +365,48 @@ export default function DashboardPage() {
     );
   }
 
+  /*
+   * PUBLIC PROFILE URL
+   */
+  const publicProfileUrl =
+    profile?.username
+      ? `${window.location.origin}/${profile.username}`
+      : "";
+
+  /*
+   * COPY PROFILE LINK
+   */
+  async function copyProfileLink() {
+    if (!publicProfileUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(
+        publicProfileUrl
+      );
+
+      setCopyMessage(
+        "Profile link copied!"
+      );
+
+      setTimeout(() => {
+        setCopyMessage("");
+      }, 2500);
+    } catch (error) {
+      console.error(
+        "Copy error:",
+        error
+      );
+    }
+  }
 
   /*
    * LOGOUT
    */
   async function logout() {
     await supabase.auth.signOut();
+
     window.location.href = "/login";
   }
-
 
   /*
    * LOADING
@@ -386,7 +414,6 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center">
-
         <div className="text-center">
 
           <div className="w-10 h-10 border-4 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto" />
@@ -396,20 +423,20 @@ export default function DashboardPage() {
           </p>
 
         </div>
-
       </main>
     );
   }
 
-
+  /*
+   * DASHBOARD
+   */
   return (
     <main className="min-h-screen bg-slate-50">
-
 
       {/* HEADER */}
       <header className="bg-white border-b border-slate-200">
 
-        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between gap-4">
 
           <div>
 
@@ -426,8 +453,17 @@ export default function DashboardPage() {
 
           </div>
 
+          <div className="flex gap-3 flex-wrap">
 
-          <div className="flex gap-3">
+            {profile?.username && (
+              <Link
+                href={`/${profile.username}`}
+                target="_blank"
+                className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
+              >
+                View Profile
+              </Link>
+            )}
 
             <Link
               href="/profile"
@@ -436,10 +472,9 @@ export default function DashboardPage() {
               Edit Profile
             </Link>
 
-
             <button
               onClick={logout}
-              className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
+              className="px-4 py-2 rounded-lg border border-red-200 bg-white text-red-600 text-sm font-medium hover:bg-red-50"
             >
               Logout
             </button>
@@ -450,10 +485,8 @@ export default function DashboardPage() {
 
       </header>
 
-
       {/* MAIN */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-
 
         {/* TITLE */}
         <div className="mb-8">
@@ -468,14 +501,79 @@ export default function DashboardPage() {
 
         </div>
 
+        {/* PUBLIC PROFILE LINK */}
+        <section className="mb-8 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+
+            <div>
+
+              <h2 className="text-lg font-bold text-slate-900">
+                Your Live Profile
+              </h2>
+
+              {profile?.username ? (
+                <>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Share this link with anyone.
+                  </p>
+
+                  <div className="mt-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 break-all">
+                    {publicProfileUrl}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-slate-500 mt-1">
+                  You haven't created your public profile yet.
+                </p>
+              )}
+
+            </div>
+
+            <div className="flex gap-3 shrink-0">
+
+              {profile?.username ? (
+                <>
+                  <Link
+                    href={`/${profile.username}`}
+                    target="_blank"
+                    className="px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
+                  >
+                    View Profile
+                  </Link>
+
+                  <button
+                    onClick={copyProfileLink}
+                    className="px-5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50"
+                  >
+                    Copy Link
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href="/profile"
+                  className="px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
+                >
+                  Create Profile
+                </Link>
+              )}
+
+            </div>
+
+          </div>
+
+          {copyMessage && (
+            <div className="mt-4 text-sm font-medium text-green-600">
+              {copyMessage}
+            </div>
+          )}
+
+        </section>
 
         {/* STAT CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
 
-
-          {/* PROFILE VIEWS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-
             <p className="text-sm text-slate-500">
               Profile Views
             </p>
@@ -487,13 +585,9 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-400 mt-2">
               Total profile visits
             </p>
-
           </div>
 
-
-          {/* IDENTIFIED */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-
             <p className="text-sm text-slate-500">
               Identified Visitors
             </p>
@@ -505,13 +599,9 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-400 mt-2">
               Logged-in visitors
             </p>
-
           </div>
 
-
-          {/* ANONYMOUS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-
             <p className="text-sm text-slate-500">
               Anonymous Visits
             </p>
@@ -523,13 +613,9 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-400 mt-2">
               Visitors without accounts
             </p>
-
           </div>
 
-
-          {/* LINK CLICKS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-
             <p className="text-sm text-slate-500">
               Link Clicks
             </p>
@@ -541,13 +627,9 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-400 mt-2">
               Total link interactions
             </p>
-
           </div>
 
-
-          {/* RETURNING */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-
             <p className="text-sm text-slate-500">
               Returning Visitors
             </p>
@@ -559,11 +641,9 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-400 mt-2">
               Logged-in users returning
             </p>
-
           </div>
 
         </div>
-
 
         {/* SECONDARY STATS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">
@@ -584,7 +664,6 @@ export default function DashboardPage() {
 
           </div>
 
-
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
 
             <p className="text-sm text-slate-500">
@@ -603,7 +682,6 @@ export default function DashboardPage() {
 
         </div>
 
-
         {/* WHO VIEWED PROFILE */}
         <section className="mt-8 bg-white rounded-2xl border border-slate-200 shadow-sm">
 
@@ -620,11 +698,11 @@ export default function DashboardPage() {
 
           </div>
 
-
           <div className="divide-y divide-slate-100">
 
             {analytics.filter(
-              (item) => item.profile_view === true
+              (item) =>
+                item.profile_view === true
             ).length === 0 ? (
 
               <div className="p-10 text-center text-slate-500">
@@ -654,7 +732,6 @@ export default function DashboardPage() {
 
                       <div className="flex items-center gap-4 min-w-0">
 
-                        {/* AVATAR */}
                         {visitor?.avatar_url ? (
 
                           <img
@@ -676,7 +753,6 @@ export default function DashboardPage() {
                           </div>
 
                         )}
-
 
                         <div className="min-w-0">
 
@@ -722,7 +798,6 @@ export default function DashboardPage() {
 
                       </div>
 
-
                       <div className="text-right shrink-0">
 
                         <p className="text-xs text-slate-400">
@@ -743,11 +818,10 @@ export default function DashboardPage() {
 
         </section>
 
-
-        {/* TOP LINKS */}
+        {/* TOP LINKS + RECENT ACTIVITY */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
 
-
+          {/* TOP LINKS */}
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
 
             <div className="p-6 border-b border-slate-200">
@@ -761,7 +835,6 @@ export default function DashboardPage() {
               </p>
 
             </div>
-
 
             <div className="p-6">
 
@@ -793,7 +866,6 @@ export default function DashboardPage() {
                               {index + 1}
                             </div>
 
-
                             <div className="min-w-0">
 
                               <p className="font-medium text-slate-800">
@@ -809,7 +881,6 @@ export default function DashboardPage() {
                             </div>
 
                           </div>
-
 
                           <div className="text-right shrink-0">
 
@@ -836,7 +907,6 @@ export default function DashboardPage() {
 
           </section>
 
-
           {/* RECENT ACTIVITY */}
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
 
@@ -851,7 +921,6 @@ export default function DashboardPage() {
               </p>
 
             </div>
-
 
             <div className="divide-y divide-slate-100">
 
@@ -874,7 +943,9 @@ export default function DashboardPage() {
 
                     const link =
                       item.link_id
-                        ? profileLinks[item.link_id]
+                        ? profileLinks[
+                            item.link_id
+                          ]
                         : null;
 
                     return (
@@ -897,27 +968,21 @@ export default function DashboardPage() {
                               : "🔗"}
                           </div>
 
-
                           <div className="min-w-0">
 
                             <p className="text-sm font-medium text-slate-800">
 
                               {item.profile_view ? (
-
                                 visitor
                                   ? `${visitor.display_name || visitor.username || "InstaView User"} viewed your profile`
                                   : "Anonymous visitor viewed your profile"
-
                               ) : (
-
                                 visitor
                                   ? `${visitor.display_name || visitor.username || "InstaView User"} clicked ${link?.title || "a link"}`
                                   : `Anonymous visitor clicked ${link?.title || "a link"}`
-
                               )}
 
                             </p>
-
 
                             {visitor?.username && (
                               <p className="text-xs text-slate-400">
@@ -928,7 +993,6 @@ export default function DashboardPage() {
                           </div>
 
                         </div>
-
 
                         <p className="text-xs text-slate-400 shrink-0">
                           {formatDate(
@@ -948,8 +1012,7 @@ export default function DashboardPage() {
 
         </div>
 
-
-        {/* PUBLIC PROFILE */}
+        {/* MANAGE PROFILE */}
         <div className="mt-8 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -957,15 +1020,14 @@ export default function DashboardPage() {
             <div>
 
               <h2 className="text-lg font-bold text-slate-900">
-                Your Public Profile
+                Manage Your Profile
               </h2>
 
               <p className="text-sm text-slate-500 mt-1">
-                Manage your profile or view what visitors see.
+                Update your name, bio, photo and profile links.
               </p>
 
             </div>
-
 
             <div className="flex gap-3">
 
@@ -973,8 +1035,18 @@ export default function DashboardPage() {
                 href="/profile"
                 className="px-5 py-2.5 border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50"
               >
-                Manage Profile
+                Edit Profile
               </Link>
+
+              {profile?.username && (
+                <Link
+                  href={`/${profile.username}`}
+                  target="_blank"
+                  className="px-5 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800"
+                >
+                  View Live Profile
+                </Link>
+              )}
 
             </div>
 
