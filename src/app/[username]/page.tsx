@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 type Profile = {
@@ -334,7 +335,19 @@ export default function PublicProfilePage() {
    * PUBLIC PROFILE
    */
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10">
+  <main className="min-h-screen bg-slate-50 px-4 py-10">
+
+    {/* HOME LINK */}
+    <div className="max-w-xl mx-auto mb-5">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition"
+      >
+        ← Home
+      </Link>
+    </div>
+
+    {/* PROFILE */}
 
       <div className="max-w-xl mx-auto">
 
