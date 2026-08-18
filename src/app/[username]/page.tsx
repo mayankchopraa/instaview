@@ -32,23 +32,22 @@ export default function PublicProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  /*
+   * LOAD PROFILE
+   */
   useEffect(() => {
     if (!username) return;
 
     loadProfile();
   }, [username]);
 
-
-  /*
-   * LOAD PUBLIC PROFILE
-   */
   const loadProfile = async () => {
     setLoading(true);
     setError("");
 
     try {
       /*
-       * Find profile
+       * GET PROFILE
        */
       const {
         data: profileData,
@@ -61,9 +60,8 @@ export default function PublicProfilePage() {
         .eq("username", username)
         .single();
 
-
       /*
-       * Profile doesn't exist
+       * PROFILE NOT FOUND
        */
       if (profileError || !profileData) {
         setError("Profile not found.");
@@ -73,9 +71,8 @@ export default function PublicProfilePage() {
 
       setProfile(profileData);
 
-
       /*
-       * Load links
+       * GET PROFILE LINKS
        */
       const {
         data: linksData,
@@ -86,14 +83,12 @@ export default function PublicProfilePage() {
         .eq("user_id", profileData.user_id)
         .order("id", { ascending: true });
 
-
       if (!linksError && linksData) {
         setLinks(linksData);
       }
 
-
       /*
-       * Record profile view
+       * RECORD PROFILE VIEW
        */
       await recordProfileView(profileData.user_id);
 
@@ -109,18 +104,17 @@ export default function PublicProfilePage() {
     }
   };
 
-
   /*
    * RECORD PROFILE VIEW
    *
    * Logged-in visitor:
-   *   viewer_id = visitor's Supabase user ID
+   * viewer_id = visitor's Supabase user ID
    *
    * Anonymous visitor:
-   *   viewer_id = null
+   * viewer_id = null
    *
-   * Profile owner viewing their own profile:
-   *   Not recorded
+   * Profile owner:
+   * view is not recorded
    */
   const recordProfileView = async (
     profileOwnerId: string
@@ -130,18 +124,15 @@ export default function PublicProfilePage() {
         data: { user },
       } = await supabase.auth.getUser();
 
-
       /*
-       * Don't count the owner viewing
-       * their own profile.
+       * Do not record owner's own views
        */
       if (user && user.id === profileOwnerId) {
         return;
       }
 
-
       /*
-       * Logged-in visitor
+       * LOGGED-IN VISITOR
        */
       if (user) {
         const { error } = await supabase
@@ -163,11 +154,8 @@ export default function PublicProfilePage() {
         return;
       }
 
-
       /*
-       * Anonymous visitor
-       *
-       * viewer_id remains null.
+       * ANONYMOUS VISITOR
        */
       const { error } = await supabase
         .from("Analytics")
@@ -187,8 +175,8 @@ export default function PublicProfilePage() {
 
     } catch (error) {
       /*
-       * Analytics failure should NEVER
-       * prevent the profile from loading.
+       * Analytics failure should never
+       * stop the profile from loading.
        */
       console.error(
         "Analytics tracking failed:",
@@ -196,7 +184,6 @@ export default function PublicProfilePage() {
       );
     }
   };
-
 
   /*
    * RECORD LINK CLICK
@@ -207,23 +194,19 @@ export default function PublicProfilePage() {
     try {
       if (!profile) return;
 
-
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-
       /*
-       * Don't record owner clicking
-       * their own public profile links.
+       * Do not record owner's own clicks
        */
       if (user && user.id === profile.user_id) {
         return;
       }
 
-
       /*
-       * Logged-in visitor
+       * LOGGED-IN VISITOR
        */
       if (user) {
         const { error } = await supabase
@@ -245,9 +228,8 @@ export default function PublicProfilePage() {
         return;
       }
 
-
       /*
-       * Anonymous visitor
+       * ANONYMOUS VISITOR
        */
       const { error } = await supabase
         .from("Analytics")
@@ -273,14 +255,12 @@ export default function PublicProfilePage() {
     }
   };
 
-
   /*
-   * LOADING
+   * LOADING SCREEN
    */
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-
         <div className="text-center">
 
           <div className="w-10 h-10 mx-auto rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin" />
@@ -290,11 +270,9 @@ export default function PublicProfilePage() {
           </div>
 
         </div>
-
       </main>
     );
   }
-
 
   /*
    * PROFILE NOT FOUND
@@ -317,12 +295,13 @@ export default function PublicProfilePage() {
             The profile you are looking for does not exist.
           </p>
 
-          <a
+          {/* HOME PAGE LINK */}
+          <Link
             href="/"
-            className="inline-block mt-6 px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
+            className="inline-flex items-center justify-center mt-6 px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition"
           >
             ← Back to Home
-          </a>
+          </Link>
 
         </div>
 
@@ -330,32 +309,35 @@ export default function PublicProfilePage() {
     );
   }
 
-
   /*
    * PUBLIC PROFILE
    */
   return (
-  <main className="min-h-screen bg-slate-50 px-4 py-10">
+    <main className="min-h-screen bg-slate-50 px-4 py-10">
 
-    {/* HOME LINK */}
-    <div className="max-w-xl mx-auto mb-5">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition"
-      >
-        ← Home
-      </Link>
-    </div>
+      {/* ================================
+          HOME PAGE LINK
+          ================================ */}
+      <div className="max-w-xl mx-auto mb-5">
 
-    {/* PROFILE */}
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition"
+        >
+          ← Home
+        </Link>
 
+      </div>
+
+      {/* ================================
+          PROFILE CARD
+          ================================ */}
       <div className="max-w-xl mx-auto">
 
         <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
 
           {/* COVER */}
           <div className="h-28 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400" />
-
 
           <div className="px-6 pb-8">
 
@@ -383,7 +365,6 @@ export default function PublicProfilePage() {
 
             </div>
 
-
             {/* PROFILE INFORMATION */}
             <div className="text-center mt-4">
 
@@ -404,8 +385,7 @@ export default function PublicProfilePage() {
 
             </div>
 
-
-            {/* LINKS */}
+            {/* PROFILE LINKS */}
             <div className="mt-8 space-y-3">
 
               {links.length > 0 ? (
@@ -441,11 +421,22 @@ export default function PublicProfilePage() {
 
         </div>
 
-
         {/* FOOTER */}
-        <p className="text-center text-xs text-slate-400 mt-6">
-          Powered by InstaView
-        </p>
+        <div className="text-center mt-6">
+
+          <p className="text-xs text-slate-400">
+            Powered by InstaView
+          </p>
+
+          {/* SECOND HOME LINK IN FOOTER */}
+          <Link
+            href="/"
+            className="inline-block mt-2 text-xs text-slate-400 hover:text-slate-700 transition"
+          >
+            Visit InstaView Home
+          </Link>
+
+        </div>
 
       </div>
 
