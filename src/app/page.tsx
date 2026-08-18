@@ -1,230 +1,321 @@
-import Link from "next/link";
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
+  useEffect(() => {
+    const trackVisit = async () => {
+      await supabase.from("Visits").insert({
+        visitor_id: crypto.randomUUID(),
+        user_agent: navigator.userAgent,
+        referrer: document.referrer || null,
+      });
+    };
+
+    trackVisit();
+
+    const getUser = async () => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  setUser(user);
+};
+
+getUser();
+  }, []);
+
   return (
     <main className="min-h-screen bg-white text-slate-900">
-
-      {/* Header */}
-      <nav className="border-b border-slate-200 bg-white">
+      {/* Navigation */}
+      <nav className="border-b border-slate-100">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
               IV
             </div>
+            <span className="text-xl font-bold tracking-tight">InstaView</span>
+          </div>
 
-            <span className="text-xl font-bold tracking-tight">
-              InstaView
-            </span>
-          </Link>
+          <div className="flex items-center gap-3">
+            {user ? (
+  <div className="flex items-center gap-3">
+    <span className="text-sm text-slate-600">
+      {user.email}
+    </span>
 
-          {/* Navigation */}
-          <div className="flex items-center gap-4">
+    <button
+      onClick={async () => {
+        await supabase.auth.signOut();
+        setUser(null);
+      }}
+      className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+    >
+      Logout
+    </button>
+  </div>
+) : (
+  <a
+    href="/login"
+    className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+  >
+    Login
+  </a>
+)}
 
-            <Link
-              href="/login"
-              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
-              Login
-            </Link>
-
-            <Link
-              href="/signup"
-              className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800"
-            >
+            <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
               Get Started
-            </Link>
-
+            </button>
           </div>
         </div>
       </nav>
 
-
-      {/* Hero Section */}
+      {/* Hero */}
       <section className="relative overflow-hidden">
+        <div className="mx-auto max-w-6xl px-6 pb-20 pt-24 text-center sm:pt-32">
+          <div className="mx-auto mb-6 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600">
+            Understand your social audience
+          </div>
 
-        <div className="mx-auto max-w-6xl px-6 pb-24 pt-20 sm:pt-28">
+          <h1 className="mx-auto max-w-4xl text-5xl font-bold tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
+            Know who interacts with your
+            <span className="block text-slate-500">online presence.</span>
+          </h1>
 
-          <div className="mx-auto max-w-4xl text-center">
+          <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-slate-600">
+            Create your personal InstaView link and understand how visitors
+            interact with your profile, links and content.
+          </p>
 
-            {/* Small Label */}
-            <div className="mx-auto mb-8 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-5 py-2 text-sm font-medium text-slate-600">
-              Understand your social audience
-            </div>
+          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <a
+  href="/profile"
+  className="rounded-xl bg-slate-900 px-8 py-4 font-semibold text-white hover:bg-slate-800"
+>
+  Create Your Free Profile
+</a>
 
+            <button className="w-full rounded-xl border border-slate-200 px-7 py-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:w-auto">
+              See How It Works
+            </button>
+          </div>
 
-            {/* Main Heading */}
-            <h1 className="text-5xl font-bold leading-tight tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
-
-              Know who interacts with your
-
-              <span className="block text-slate-500">
-                online presence.
-              </span>
-
-            </h1>
-
-
-            {/* Description */}
-            <p className="mx-auto mt-8 max-w-3xl text-lg leading-8 text-slate-600 sm:text-xl">
-              Create your personal InstaView link and understand how visitors
-              interact with your profile, links and content.
+          {/* Example link */}
+          <div className="mx-auto mt-14 max-w-xl rounded-2xl border border-slate-200 bg-slate-50 p-5 text-left shadow-sm">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Your InstaView link
             </p>
 
+            <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm">
+              <span className="text-sm font-medium text-slate-700">
+                instaview.app/mayank
+              </span>
 
-            {/* Buttons */}
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-
-              {/* Create Profile */}
-              <Link
-                href="/signup"
-                className="rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition hover:bg-slate-800"
-              >
-                Create Your Free Profile
-              </Link>
-
-
-              {/* How It Works */}
-              <Link
-                href="/login"
-                className="rounded-xl border border-slate-200 bg-white px-8 py-4 text-base font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                See How It Works
-              </Link>
-
+              <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                Copy
+              </span>
             </div>
-
           </div>
-
-
-          {/* Feature Preview */}
-          <div className="mx-auto mt-20 max-w-5xl">
-
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm sm:p-6">
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-10">
-
-                <div className="grid gap-6 sm:grid-cols-3">
-
-                  {/* Feature 1 */}
-                  <div className="rounded-2xl border border-slate-200 p-6">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
-                      01
-                    </div>
-
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      Personal Profile
-                    </h3>
-
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Create your own InstaView profile and share one simple
-                      link with your audience.
-                    </p>
-                  </div>
-
-
-                  {/* Feature 2 */}
-                  <div className="rounded-2xl border border-slate-200 p-6">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
-                      02
-                    </div>
-
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      Track Interactions
-                    </h3>
-
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Understand how visitors interact with your profile and
-                      the links you share.
-                    </p>
-                  </div>
-
-
-                  {/* Feature 3 */}
-                  <div className="rounded-2xl border border-slate-200 p-6">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
-                      03
-                    </div>
-
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      View Analytics
-                    </h3>
-
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Get useful insights into your audience and profile
-                      activity.
-                    </p>
-                  </div>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
         </div>
-
       </section>
 
+      {/* Features */}
+      <section className="border-y border-slate-100 bg-slate-50">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+              Simple insights
+            </p>
 
-      {/* CTA Section */}
-      <section className="border-t border-slate-200 bg-slate-50">
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+              Turn profile traffic into useful information.
+            </h2>
 
+            <p className="mt-4 text-slate-600">
+              See what people do after they arrive through your InstaView
+              profile.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            <Feature
+              number="01"
+              title="Track visits"
+              description="Understand how many people are visiting your InstaView profile."
+            />
+
+            <Feature
+              number="02"
+              title="Understand activity"
+              description="See which links and sections visitors interact with."
+            />
+
+            <Feature
+              number="03"
+              title="Identify interest"
+              description="Recognize returning visitors and stronger engagement patterns."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+                How it works
+              </p>
+
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+                One link. Better understanding.
+              </h2>
+
+              <p className="mt-5 leading-7 text-slate-600">
+                Add your InstaView link to your Instagram bio or anywhere you
+                want people to discover you.
+              </p>
+
+              <div className="mt-8 space-y-5">
+                <Step
+                  number="1"
+                  title="Create your profile"
+                  description="Set up your personal InstaView page."
+                />
+
+                <Step
+                  number="2"
+                  title="Share your link"
+                  description="Add it to your Instagram bio or social profiles."
+                />
+
+                <Step
+                  number="3"
+                  title="Understand interactions"
+                  description="See visits and activity through your dashboard."
+                />
+              </div>
+            </div>
+
+            {/* Dashboard mockup */}
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-xl shadow-slate-100">
+              <div className="rounded-2xl bg-white p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-400">Profile visits</p>
+                    <p className="mt-1 text-3xl font-bold">1,248</p>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
+                    +18.4%
+                  </div>
+                </div>
+
+                <div className="mt-8 flex h-32 items-end gap-2">
+                  {[35, 52, 45, 68, 58, 78, 92, 70, 84, 100, 88, 108].map(
+                    (height, index) => (
+                      <div
+                        key={index}
+                        className="flex-1 rounded-t-md bg-slate-900"
+                        style={{ height: `${height}%` }}
+                      />
+                    )
+                  )}
+                </div>
+
+                <div className="mt-8 grid grid-cols-2 gap-4">
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-400">Returning visitors</p>
+                    <p className="mt-1 text-xl font-bold">284</p>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 p-4">
+                    <p className="text-xs text-slate-400">Link interactions</p>
+                    <p className="mt-1 text-xl font-bold">436</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="bg-slate-950">
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
-
-          <h2 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-            Ready to create your InstaView profile?
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Start understanding your audience.
           </h2>
 
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
-            Create your free profile and start understanding how people
+          <p className="mx-auto mt-4 max-w-xl leading-7 text-slate-400">
+            Create your free InstaView profile and start learning how people
             interact with your online presence.
           </p>
 
-          <div className="mt-8">
-
-            <Link
-              href="/signup"
-              className="inline-flex rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition hover:bg-slate-800"
-            >
-              Get Started Free
-            </Link>
-
-          </div>
-
+          <button className="mt-8 rounded-xl bg-white px-7 py-3.5 text-sm font-semibold text-slate-950 hover:bg-slate-100">
+            Create Your Free Profile
+          </button>
         </div>
-
       </section>
 
-
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white">
-
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
-
-          <div className="flex items-center gap-2">
-
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-xs font-bold text-white">
-              IV
-            </div>
-
-            <span className="font-semibold text-slate-900">
-              InstaView
-            </span>
-
-          </div>
-
-          <p className="text-sm text-slate-500">
-            © {new Date().getFullYear()} InstaView. All rights reserved.
-          </p>
-
+      <footer className="bg-slate-950 pb-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 border-t border-slate-800 px-6 pt-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <span>© 2026 InstaView</span>
+          <span>Understand interactions. Build better connections.</span>
         </div>
-
       </footer>
-
     </main>
+  );
+}
+
+function Feature({
+  number,
+  title,
+  description,
+}: {
+  number: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-7">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-xs font-bold text-white">
+        {number}
+      </div>
+
+      <h3 className="mt-6 text-lg font-bold text-slate-950">{title}</h3>
+
+      <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+    </div>
+  );
+}
+
+function Step({
+  number,
+  title,
+  description,
+}: {
+  number: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex gap-4">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
+        {number}
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-slate-950">{title}</h3>
+        <p className="mt-1 text-sm leading-6 text-slate-600">
+          {description}
+        </p>
+      </div>
+    </div>
   );
 }
