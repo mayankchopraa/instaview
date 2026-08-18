@@ -1,701 +1,369 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-type Link = {
-  id: string;
-  title: string;
-  url: string;
-};
-
-export default function ProfilePage() {
-  const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [bio, setBio] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
-
-  const [links, setLinks] = useState<Link[]>([]);
-  const [linkTitle, setLinkTitle] = useState("");
-  const [linkUrl, setLinkUrl] = useState("");
-
+export default function Home() {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [linkSaving, setLinkSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-
-  const [message, setMessage] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [username, setUsername] = useState("");
 
   useEffect(() => {
-    loadDashboard();
+    checkUser();
   }, []);
 
-  const loadDashboard = async () => {
-    setLoading(true);
-
+  const checkUser = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      window.location.href = "/login";
+      setLoading(false);
       return;
     }
 
-    const { data: profile, error: profileError } = await supabase
+    setUserEmail(user.email || "");
+
+    const { data: profile } = await supabase
       .from("Profiles")
-      .select("username, display_name, bio, avatar_url")
+      .select("username")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (profileError) {
-      setMessage(profileError.message);
+    if (profile?.username) {
+      setUsername(profile.username);
     }
 
-    if (profile) {
-      setUsername(profile.username || "");
-      setDisplayName(profile.display_name || "");
-      setBio(profile.bio || "");
-      setAvatarUrl(profile.avatar_url || "");
-    }
-
-    const { data: linksData, error: linksError } = await supabase
-      .from("Links")
-      .select("id, title, url")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true });
-
-    if (linksError) {
-      setMessage(linksError.message);
-    }
-
-    setLinks(linksData || []);
     setLoading(false);
-  };
-
-  const saveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    setSaving(true);
-    setMessage("");
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    if (!username.trim()) {
-      setMessage("Username is required.");
-      setSaving(false);
-      return;
-    }
-
-    const { error } = await supabase
-      .from("Profiles")
-      .upsert(
-        {
-          user_id: user.id,
-          username: username.trim(),
-          display_name: displayName.trim() || null,
-          bio: bio.trim() || null,
-          avatar_url: avatarUrl || null,
-        },
-        {
-          onConflict: "user_id",
-        }
-      );
-
-    if (error) {
-      setMessage(error.message);
-      setSaving(false);
-      return;
-    }
-
-    setMessage("Profile saved successfully!");
-    setSaving(false);
-  };
-
-  const uploadAvatar = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-      setMessage("Please select an image file.");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage("Image must be smaller than 5MB.");
-      return;
-    }
-
-    setUploading(true);
-    setMessage("");
-
-    const fileExtension =
-      file.name.split(".").pop() || "jpg";
-
-    const filePath =
-      `${user.id}/avatar-${Date.now()}.${fileExtension}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(filePath, file, {
-        upsert: true,
-      });
-
-    if (uploadError) {
-      setMessage(uploadError.message);
-      setUploading(false);
-      return;
-    }
-
-    const { data } = supabase.storage
-      .from("avatars")
-      .getPublicUrl(filePath);
-
-    const publicUrl = data.publicUrl;
-
-    const { error: updateError } = await supabase
-      .from("Profiles")
-      .update({
-        avatar_url: publicUrl,
-      })
-      .eq("user_id", user.id);
-
-    if (updateError) {
-      setMessage(updateError.message);
-      setUploading(false);
-      return;
-    }
-
-    setAvatarUrl(publicUrl);
-    setMessage("Profile photo updated!");
-    setUploading(false);
-  };
-
-  const addLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!linkTitle.trim() || !linkUrl.trim()) {
-      setMessage("Please enter both the title and URL.");
-      return;
-    }
-
-    setLinkSaving(true);
-    setMessage("");
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("Links")
-      .insert({
-        user_id: user.id,
-        title: linkTitle.trim(),
-        url: linkUrl.trim(),
-      })
-      .select("id, title, url")
-      .single();
-
-    if (error) {
-      setMessage(error.message);
-      setLinkSaving(false);
-      return;
-    }
-
-    if (data) {
-      setLinks((current) => [...current, data]);
-    }
-
-    setLinkTitle("");
-    setLinkUrl("");
-    setMessage("Link added successfully!");
-    setLinkSaving(false);
-  };
-
-  const editLink = async (
-    id: string,
-    currentTitle: string,
-    currentUrl: string
-  ) => {
-    const newTitle = window.prompt(
-      "Link title:",
-      currentTitle
-    );
-
-    if (newTitle === null) {
-      return;
-    }
-
-    const newUrl = window.prompt(
-      "Link URL:",
-      currentUrl
-    );
-
-    if (newUrl === null) {
-      return;
-    }
-
-    if (!newTitle.trim() || !newUrl.trim()) {
-      setMessage("Both fields are required.");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("Links")
-      .update({
-        title: newTitle.trim(),
-        url: newUrl.trim(),
-      })
-      .eq("id", id)
-      .select("id, title, url")
-      .single();
-
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-
-    if (data) {
-      setLinks((current) =>
-        current.map((link) =>
-          link.id === id ? data : link
-        )
-      );
-    }
-
-    setMessage("Link updated successfully!");
-  };
-
-  const deleteLink = async (id: string) => {
-    const confirmed = window.confirm(
-      "Delete this link?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    const { error } = await supabase
-      .from("Links")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
-
-    setLinks((current) =>
-      current.filter((link) => link.id !== id)
-    );
-
-    setMessage("Link deleted successfully!");
-  };
-
-  const copyProfileUrl = async () => {
-    if (!username) {
-      return;
-    }
-
-    const url =
-      `${window.location.origin}/${username}`;
-
-    await navigator.clipboard.writeText(url);
-
-    setMessage("Profile link copied!");
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
-    window.location.href = "/";
+    window.location.reload();
   };
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <p className="text-slate-500">
-          Loading dashboard...
-        </p>
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-slate-100">
+    <main className="min-h-screen bg-white text-slate-900">
 
-      {/* Header */}
+      {/* HEADER */}
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
 
-      <header className="border-b bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
+              IV
+            </div>
 
-          <a
-            href="/"
-            className="text-xl font-bold text-slate-900"
-          >
-            InstaView
-          </a>
+            <span className="text-xl font-bold tracking-tight">
+              InstaView
+            </span>
+          </Link>
 
-          <button
-            onClick={logout}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Logout
-          </button>
+
+          {/* Right side */}
+          {!loading && (
+            <div className="flex items-center gap-4">
+
+              {userEmail ? (
+                <>
+                  <span className="hidden text-sm text-slate-600 sm:block">
+                    {userEmail}
+                  </span>
+
+                  <button
+                    onClick={logout}
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                  >
+                    Logout
+                  </button>
+
+                  <Link
+                    href="/profile"
+                    className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800"
+                  >
+                    Edit Profile
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                  >
+                    Login
+                  </Link>
+
+                  <Link
+                    href="/signup"
+                    className="rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800"
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
+
+            </div>
+          )}
 
         </div>
       </header>
 
-      {/* Dashboard */}
 
-      <div className="mx-auto max-w-6xl px-6 py-10">
+      {/* HERO */}
+      <section className="relative overflow-hidden">
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">
-            Dashboard
-          </h1>
+        <div className="mx-auto max-w-6xl px-6 pb-24 pt-20 sm:pt-28">
 
-          <p className="mt-2 text-slate-500">
-            Manage your InstaView profile and links.
-          </p>
-        </div>
+          <div className="mx-auto max-w-4xl text-center">
 
-        {message && (
-          <div className="mb-6 rounded-xl bg-white px-5 py-4 text-sm text-slate-700 shadow-sm">
-            {message}
-          </div>
-        )}
+            {/* Badge */}
+            <div className="mx-auto mb-8 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-5 py-2 text-sm font-medium text-slate-600">
+              Understand your social audience
+            </div>
 
-        <div className="grid gap-8 lg:grid-cols-3">
 
-          {/* Left */}
+            {/* Heading */}
+            <h1 className="text-5xl font-bold leading-tight tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
 
-          <div className="space-y-8 lg:col-span-2">
+              Know who interacts with your
 
-            {/* Profile */}
+              <span className="block text-slate-500">
+                online presence.
+              </span>
 
-            <section className="rounded-2xl bg-white p-6 shadow-sm">
+            </h1>
 
-              <h2 className="text-xl font-bold text-slate-900">
-                My Profile
-              </h2>
 
-              <div className="mt-6 flex items-center gap-5">
+            {/* Description */}
+            <p className="mx-auto mt-8 max-w-3xl text-lg leading-8 text-slate-600 sm:text-xl">
+              Create your personal InstaView link and understand how visitors
+              interact with your profile, links and content.
+            </p>
 
-                <div className="relative">
 
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="Profile"
-                      className="h-24 w-24 rounded-full object-cover"
-                    />
+            {/* BUTTONS */}
+            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+
+              {!loading && userEmail ? (
+                <>
+                  {/* Logged in - View Profile */}
+                  {username ? (
+                    <Link
+                      href={`/${username}`}
+                      className="rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition hover:bg-slate-800"
+                    >
+                      View Your Profile
+                    </Link>
                   ) : (
-                    <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-900 text-3xl font-bold text-white">
-                      {(displayName || username || "U")
-                        .charAt(0)
-                        .toUpperCase()}
-                    </div>
+                    <Link
+                      href="/profile"
+                      className="rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition hover:bg-slate-800"
+                    >
+                      Complete Your Profile
+                    </Link>
                   )}
 
-                </div>
+                  {/* Edit Profile */}
+                  <Link
+                    href="/profile"
+                    className="rounded-xl border border-slate-200 bg-white px-8 py-4 text-base font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Edit Your Profile
+                  </Link>
+                </>
+              ) : (
+                <>
+                  {/* Logged out */}
+                  <Link
+                    href="/signup"
+                    className="rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    Create Your Free Profile
+                  </Link>
 
-                <div>
-                  <label className="inline-block cursor-pointer rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                    {uploading
-                      ? "Uploading..."
-                      : "Change Photo"}
+                  <Link
+                    href="/login"
+                    className="rounded-xl border border-slate-200 bg-white px-8 py-4 text-base font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    See How It Works
+                  </Link>
+                </>
+              )}
 
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={uploadAvatar}
-                      disabled={uploading}
-                      className="hidden"
-                    />
-                  </label>
-
-                  <p className="mt-2 text-xs text-slate-400">
-                    JPG, PNG or WebP. Maximum 5MB.
-                  </p>
-                </div>
-
-              </div>
-
-              <form
-                onSubmit={saveProfile}
-                className="mt-8 space-y-5"
-              >
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Username
-                  </label>
-
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) =>
-                      setUsername(e.target.value)
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Display Name
-                  </label>
-
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) =>
-                      setDisplayName(e.target.value)
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Bio
-                  </label>
-
-                  <textarea
-                    value={bio}
-                    onChange={(e) =>
-                      setBio(e.target.value)
-                    }
-                    rows={4}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-xl bg-slate-900 px-6 py-3 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                >
-                  {saving
-                    ? "Saving..."
-                    : "Save Profile"}
-                </button>
-
-              </form>
-
-            </section>
-
-            {/* Links */}
-
-            <section className="rounded-2xl bg-white p-6 shadow-sm">
-
-              <h2 className="text-xl font-bold text-slate-900">
-                My Links
-              </h2>
-
-              <form
-                onSubmit={addLink}
-                className="mt-6 space-y-4"
-              >
-
-                <input
-                  type="text"
-                  value={linkTitle}
-                  onChange={(e) =>
-                    setLinkTitle(e.target.value)
-                  }
-                  placeholder="Link title"
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
-                />
-
-                <input
-                  type="url"
-                  value={linkUrl}
-                  onChange={(e) =>
-                    setLinkUrl(e.target.value)
-                  }
-                  placeholder="https://example.com"
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
-                />
-
-                <button
-                  type="submit"
-                  disabled={linkSaving}
-                  className="rounded-xl bg-slate-900 px-6 py-3 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                >
-                  {linkSaving
-                    ? "Adding..."
-                    : "Add Link"}
-                </button>
-
-              </form>
-
-              <div className="mt-8 space-y-3">
-
-                {links.length === 0 ? (
-                  <p className="text-sm text-slate-400">
-                    No links added yet.
-                  </p>
-                ) : (
-                  links.map((link) => (
-                    <div
-                      key={link.id}
-                      className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 p-4"
-                    >
-
-                      <div className="min-w-0">
-                        <p className="font-medium text-slate-900">
-                          {link.title}
-                        </p>
-
-                        <p className="mt-1 break-all text-sm text-slate-500">
-                          {link.url}
-                        </p>
-                      </div>
-
-                      <div className="flex shrink-0 gap-2">
-
-                        <button
-                          onClick={() =>
-                            editLink(
-                              link.id,
-                              link.title,
-                              link.url
-                            )
-                          }
-                          className="rounded-lg border px-3 py-2 text-sm hover:bg-slate-50"
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            deleteLink(link.id)
-                          }
-                          className="rounded-lg bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-700"
-                        >
-                          Delete
-                        </button>
-
-                      </div>
-
-                    </div>
-                  ))
-                )}
-
-              </div>
-
-            </section>
+            </div>
 
           </div>
 
-          {/* Right */}
 
-          <aside className="lg:sticky lg:top-8 lg:self-start">
+          {/* FEATURE PREVIEW */}
+          <div className="mx-auto mt-20 max-w-5xl">
 
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm sm:p-6">
 
-              <h2 className="text-xl font-bold text-slate-900">
-                Your Public Profile
-              </h2>
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-10">
 
-              <div className="mt-6 rounded-2xl bg-slate-50 p-6 text-center">
+                <div className="grid gap-6 sm:grid-cols-3">
 
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Profile"
-                    className="mx-auto h-20 w-20 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-900 text-2xl font-bold text-white">
-                    {(displayName || username || "U")
-                      .charAt(0)
-                      .toUpperCase()}
-                  </div>
-                )}
+                  {/* Feature 1 */}
+                  <div className="rounded-2xl border border-slate-200 p-6">
 
-                <h3 className="mt-4 text-xl font-bold text-slate-900">
-                  {displayName || username}
-                </h3>
-
-                <p className="text-sm text-slate-500">
-                  @{username}
-                </p>
-
-                {bio && (
-                  <p className="mt-3 text-sm text-slate-600">
-                    {bio}
-                  </p>
-                )}
-
-                <div className="mt-5 space-y-2">
-
-                  {links.slice(0, 3).map((link) => (
-                    <div
-                      key={link.id}
-                      className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
-                    >
-                      {link.title}
+                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
+                      01
                     </div>
-                  ))}
+
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      Personal Profile
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Create your own InstaView profile and share one simple
+                      link with your audience.
+                    </p>
+
+                  </div>
+
+
+                  {/* Feature 2 */}
+                  <div className="rounded-2xl border border-slate-200 p-6">
+
+                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
+                      02
+                    </div>
+
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      Track Interactions
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Understand how visitors interact with your profile and
+                      the links you share.
+                    </p>
+
+                  </div>
+
+
+                  {/* Feature 3 */}
+                  <div className="rounded-2xl border border-slate-200 p-6">
+
+                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
+                      03
+                    </div>
+
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      View Analytics
+                    </h3>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Get useful insights into your audience and profile
+                      activity.
+                    </p>
+
+                  </div>
 
                 </div>
-
-              </div>
-
-              <div className="mt-5 grid grid-cols-2 gap-3">
-
-                <a
-                  href={`/${username}`}
-                  target="_blank"
-                  className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  View Profile
-                </a>
-
-                <button
-                  onClick={copyProfileUrl}
-                  className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800"
-                >
-                  Copy Link
-                </button>
 
               </div>
 
             </div>
 
-          </aside>
+          </div>
 
         </div>
 
-      </div>
+      </section>
+
+
+      {/* BOTTOM CTA */}
+      <section className="border-t border-slate-200 bg-slate-50">
+
+        <div className="mx-auto max-w-4xl px-6 py-20 text-center">
+
+          {userEmail ? (
+            <>
+              <h2 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+                Manage your InstaView profile
+              </h2>
+
+              <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
+                Update your profile, add links and keep your online presence
+                up to date.
+              </p>
+
+              <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+
+                <Link
+                  href="/profile"
+                  className="rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Edit Your Profile
+                </Link>
+
+                {username && (
+                  <Link
+                    href={`/${username}`}
+                    className="rounded-xl border border-slate-200 bg-white px-8 py-4 text-base font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    View Your Profile
+                  </Link>
+                )}
+
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+                Ready to create your InstaView profile?
+              </h2>
+
+              <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
+                Create your free profile and start understanding how people
+                interact with your online presence.
+              </p>
+
+              <div className="mt-8">
+
+                <Link
+                  href="/signup"
+                  className="inline-flex rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Get Started Free
+                </Link>
+
+              </div>
+            </>
+          )}
+
+        </div>
+
+      </section>
+
+
+      {/* FOOTER */}
+      <footer className="border-t border-slate-200 bg-white">
+
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 sm:flex-row">
+
+          <div className="flex items-center gap-2">
+
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-xs font-bold text-white">
+              IV
+            </div>
+
+            <span className="font-semibold text-slate-900">
+              InstaView
+            </span>
+
+          </div>
+
+          <p className="text-sm text-slate-500">
+            © {new Date().getFullYear()} InstaView. All rights reserved.
+          </p>
+
+        </div>
+
+      </footer>
 
     </main>
   );
