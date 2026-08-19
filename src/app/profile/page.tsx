@@ -18,7 +18,7 @@ export default function ProfilePage() {
 
   const [links, setLinks] = useState<ProfileLink[]>([]);
   const [linkTitle, setLinkTitle] = useState("");
-const [linkUrl, setLinkUrl] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,15 +34,6 @@ const [linkUrl, setLinkUrl] = useState("");
 
   /*
    * LOAD PROFILE
-   *
-   * If the authenticated user does not
-   * have a Profiles row yet, create one.
-   *
-   * This is important for:
-   * Google
-   * Facebook
-   * GitHub
-   * Email signup
    */
   const loadProfile = async () => {
     setLoading(true);
@@ -60,7 +51,7 @@ const [linkUrl, setLinkUrl] = useState("");
       }
 
       /*
-       * Find existing profile
+       * FIND EXISTING PROFILE
        */
       const {
         data: existingProfile,
@@ -83,7 +74,7 @@ const [linkUrl, setLinkUrl] = useState("");
       }
 
       /*
-       * Existing profile
+       * EXISTING PROFILE
        */
       if (existingProfile) {
         setUsername(
@@ -105,9 +96,12 @@ const [linkUrl, setLinkUrl] = useState("");
         /*
          * NEW USER
          *
-         * Create an empty profile row.
+         * Works for:
+         * Google
+         * Facebook
+         * GitHub
+         * Email signup
          */
-
         const metadata =
           user.user_metadata || {};
 
@@ -122,23 +116,24 @@ const [linkUrl, setLinkUrl] = useState("");
           "";
 
         /*
-         * Do not automatically create a
-         * public username from email.
+         * Create empty profile.
          *
-         * User will choose username.
+         * Username remains empty until
+         * user chooses one.
          */
-        const { error: createError } =
-          await supabase
-            .from("Profiles")
-            .insert({
-              user_id: user.id,
-              username: null,
-              display_name:
-                providerName || null,
-              bio: null,
-              avatar_url:
-                providerAvatar || null,
-            });
+        const {
+          error: createError,
+        } = await supabase
+          .from("Profiles")
+          .insert({
+            user_id: user.id,
+            username: null,
+            display_name:
+              providerName || null,
+            bio: null,
+            avatar_url:
+              providerAvatar || null,
+          });
 
         if (createError) {
           console.error(
@@ -146,10 +141,6 @@ const [linkUrl, setLinkUrl] = useState("");
             createError
           );
 
-          /*
-           * If username column does not
-           * allow NULL, show the actual error.
-           */
           setError(
             createError.message
           );
@@ -184,11 +175,14 @@ const [linkUrl, setLinkUrl] = useState("");
           linksError
         );
 
-        setError(linksError.message);
+        setError(
+          linksError.message
+        );
       }
 
-      setLinks(linksData || []);
-
+      setLinks(
+        linksData || []
+      );
     } catch (error) {
       console.error(
         "Profile loading error:",
@@ -227,18 +221,46 @@ const [linkUrl, setLinkUrl] = useState("");
     /*
      * CLEAN USERNAME
      */
-    const cleanUsername = username
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(
-        /[^a-z0-9-_]/g,
-        ""
-      );
+    const cleanUsername =
+      username
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(
+          /[^a-z0-9-_]/g,
+          ""
+        );
 
-    if (!cleanUsername) {
+    /*
+     * MINIMUM USERNAME LENGTH
+     */
+    if (cleanUsername.length < 3) {
       setError(
-        "Please enter a valid username."
+        "Username must be at least 3 characters."
+      );
+      return;
+    }
+
+    /*
+     * MAXIMUM USERNAME LENGTH
+     */
+    if (cleanUsername.length > 30) {
+      setError(
+        "Username cannot be longer than 30 characters."
+      );
+      return;
+    }
+
+    /*
+     * USERNAME FORMAT
+     */
+    if (
+      !/^[a-z0-9][a-z0-9-_]*$/.test(
+        cleanUsername
+      )
+    ) {
+      setError(
+        "Username can only contain letters, numbers, hyphens and underscores."
       );
       return;
     }
@@ -257,10 +279,8 @@ const [linkUrl, setLinkUrl] = useState("");
       }
 
       /*
-       * CHECK USERNAME
-       *
-       * Prevent two users from using
-       * the same public username.
+       * CHECK IF USERNAME IS ALREADY
+       * USED BY ANOTHER USER
        */
       const {
         data: usernameOwner,
@@ -268,8 +288,14 @@ const [linkUrl, setLinkUrl] = useState("");
       } = await supabase
         .from("Profiles")
         .select("user_id")
-        .eq("username", cleanUsername)
-        .neq("user_id", user.id)
+        .eq(
+          "username",
+          cleanUsername
+        )
+        .neq(
+          "user_id",
+          user.id
+        )
         .maybeSingle();
 
       if (usernameCheckError) {
@@ -277,41 +303,95 @@ const [linkUrl, setLinkUrl] = useState("");
           "Username check error:",
           usernameCheckError
         );
+
+        setError(
+          "Unable to check username availability. Please try again."
+        );
+
+        return;
       }
 
       if (usernameOwner) {
         setError(
           "This username is already taken. Please choose another."
         );
+
+        return;
+      }
+
+      /*
+       * CHECK RESERVED USERNAME
+       *
+       * Prevent users from using
+       * application routes as usernames.
+       *
+       * Example:
+       * /login
+       * /signup
+       * /dashboard
+       * /profile
+       * /settings
+       */
+      const {
+        data: reservedUsername,
+        error: reservedUsernameError,
+      } = await supabase
+        .from("ReservedUsernames")
+        .select("username")
+        .eq(
+          "username",
+          cleanUsername
+        )
+        .maybeSingle();
+
+      if (reservedUsernameError) {
+        console.error(
+          "Reserved username check error:",
+          reservedUsernameError
+        );
+
+        setError(
+          "Unable to check reserved usernames. Please try again."
+        );
+
+        return;
+      }
+
+      if (reservedUsername) {
+        setError(
+          `"${cleanUsername}" is reserved. Please choose another username.`
+        );
+
         return;
       }
 
       /*
        * SAVE PROFILE
        */
-      const { error: saveError } =
-        await supabase
-          .from("Profiles")
-          .upsert(
-            {
-              user_id: user.id,
-              username:
-                cleanUsername,
-              display_name:
-                displayName.trim() ||
-                null,
-              bio:
-                bio.trim() ||
-                null,
-              avatar_url:
-                avatarUrl ||
-                null,
-            },
-            {
-              onConflict:
-                "user_id",
-            }
-          );
+      const {
+        error: saveError,
+      } = await supabase
+        .from("Profiles")
+        .upsert(
+          {
+            user_id: user.id,
+            username:
+              cleanUsername,
+            display_name:
+              displayName.trim() ||
+              null,
+            bio:
+              bio.trim() ||
+              null,
+            avatar_url:
+              avatarUrl ||
+              null,
+          },
+          {
+            onConflict:
+              "user_id",
+          }
+        );
 
       if (saveError) {
         console.error(
@@ -322,6 +402,7 @@ const [linkUrl, setLinkUrl] = useState("");
         setError(
           saveError.message
         );
+
         return;
       }
 
@@ -332,7 +413,6 @@ const [linkUrl, setLinkUrl] = useState("");
       setMessage(
         "Profile saved successfully!"
       );
-
     } catch (error) {
       console.error(
         "Save profile error:",
@@ -348,7 +428,7 @@ const [linkUrl, setLinkUrl] = useState("");
   };
 
   /*
-   * UPLOAD PHOTO
+   * UPLOAD PROFILE PHOTO
    */
   const uploadAvatar = async (
     e: React.ChangeEvent<HTMLInputElement>
@@ -356,11 +436,16 @@ const [linkUrl, setLinkUrl] = useState("");
     const file =
       e.target.files?.[0];
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     setMessage("");
     setError("");
 
+    /*
+     * CHECK FILE TYPE
+     */
     if (
       !file.type.startsWith(
         "image/"
@@ -369,9 +454,13 @@ const [linkUrl, setLinkUrl] = useState("");
       setError(
         "Please select an image file."
       );
+
       return;
     }
 
+    /*
+     * MAX 5MB
+     */
     if (
       file.size >
       5 * 1024 * 1024
@@ -379,6 +468,7 @@ const [linkUrl, setLinkUrl] = useState("");
       setError(
         "Image must be smaller than 5MB."
       );
+
       return;
     }
 
@@ -389,6 +479,7 @@ const [linkUrl, setLinkUrl] = useState("");
     if (!user) {
       window.location.href =
         "/login";
+
       return;
     }
 
@@ -428,11 +519,12 @@ const [linkUrl, setLinkUrl] = useState("");
         setError(
           uploadError.message
         );
+
         return;
       }
 
       /*
-       * PUBLIC URL
+       * GET PUBLIC URL
        */
       const {
         data,
@@ -447,7 +539,7 @@ const [linkUrl, setLinkUrl] = useState("");
         data.publicUrl;
 
       /*
-       * SAVE URL
+       * SAVE URL TO PROFILE
        */
       const {
         error: updateError,
@@ -474,6 +566,7 @@ const [linkUrl, setLinkUrl] = useState("");
         setError(
           updateError.message
         );
+
         return;
       }
 
@@ -484,7 +577,6 @@ const [linkUrl, setLinkUrl] = useState("");
       setMessage(
         "Profile photo updated successfully!"
       );
-
     } catch (error) {
       console.error(
         "Avatar upload error:",
@@ -510,6 +602,9 @@ const [linkUrl, setLinkUrl] = useState("");
     setMessage("");
     setError("");
 
+    /*
+     * REQUIRED FIELDS
+     */
     if (
       !linkTitle.trim() ||
       !linkUrl.trim()
@@ -517,12 +612,16 @@ const [linkUrl, setLinkUrl] = useState("");
       setError(
         "Please enter both the link title and URL."
       );
+
       return;
     }
 
     let validUrl =
       linkUrl.trim();
 
+    /*
+     * ADD HTTPS IF NEEDED
+     */
     if (
       !validUrl.startsWith(
         "http://"
@@ -535,6 +634,19 @@ const [linkUrl, setLinkUrl] = useState("");
         `https://${validUrl}`;
     }
 
+    /*
+     * BASIC URL VALIDATION
+     */
+    try {
+      new URL(validUrl);
+    } catch {
+      setError(
+        "Please enter a valid URL."
+      );
+
+      return;
+    }
+
     setLinkSaving(true);
 
     try {
@@ -545,6 +657,7 @@ const [linkUrl, setLinkUrl] = useState("");
       if (!user) {
         window.location.href =
           "/login";
+
         return;
       }
 
@@ -574,6 +687,7 @@ const [linkUrl, setLinkUrl] = useState("");
         setError(
           error.message
         );
+
         return;
       }
 
@@ -592,7 +706,6 @@ const [linkUrl, setLinkUrl] = useState("");
       setMessage(
         "Link added successfully!"
       );
-
     } catch (error) {
       console.error(
         "Add link error:",
@@ -646,6 +759,7 @@ const [linkUrl, setLinkUrl] = useState("");
       setError(
         "Both fields are required."
       );
+
       return;
     }
 
@@ -664,6 +778,19 @@ const [linkUrl, setLinkUrl] = useState("");
         `https://${newUrl}`;
     }
 
+    /*
+     * VALIDATE URL
+     */
+    try {
+      new URL(newUrl);
+    } catch {
+      setError(
+        "Please enter a valid URL."
+      );
+
+      return;
+    }
+
     setMessage("");
     setError("");
 
@@ -678,7 +805,10 @@ const [linkUrl, setLinkUrl] = useState("");
             newTitle.trim(),
           url: newUrl,
         })
-        .eq("id", id)
+        .eq(
+          "id",
+          id
+        )
         .select(
           "id, title, url"
         )
@@ -693,6 +823,7 @@ const [linkUrl, setLinkUrl] = useState("");
         setError(
           error.message
         );
+
         return;
       }
 
@@ -711,7 +842,6 @@ const [linkUrl, setLinkUrl] = useState("");
       setMessage(
         "Link updated successfully!"
       );
-
     } catch (error) {
       console.error(
         "Edit link error:",
@@ -762,6 +892,7 @@ const [linkUrl, setLinkUrl] = useState("");
         setError(
           error.message
         );
+
         return;
       }
 
@@ -776,7 +907,6 @@ const [linkUrl, setLinkUrl] = useState("");
       setMessage(
         "Link deleted successfully!"
       );
-
     } catch (error) {
       console.error(
         "Delete link error:",
@@ -798,6 +928,7 @@ const [linkUrl, setLinkUrl] = useState("");
         setError(
           "Please save your username first."
         );
+
         return;
       }
 
@@ -827,13 +958,12 @@ const [linkUrl, setLinkUrl] = useState("");
   /*
    * LOGOUT
    */
-  const logout =
-    async () => {
-      await supabase.auth.signOut();
+  const logout = async () => {
+    await supabase.auth.signOut();
 
-      window.location.href =
-        "/";
-    };
+    window.location.href =
+      "/";
+  };
 
   /*
    * LOADING
@@ -841,7 +971,6 @@ const [linkUrl, setLinkUrl] = useState("");
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-100">
-
         <div className="text-center">
 
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-900" />
@@ -851,7 +980,6 @@ const [linkUrl, setLinkUrl] = useState("");
           </p>
 
         </div>
-
       </main>
     );
   }
@@ -867,6 +995,7 @@ const [linkUrl, setLinkUrl] = useState("");
 
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
 
+          {/* LOGO */}
           <Link
             href="/"
             className="text-xl font-bold text-slate-900"
@@ -874,8 +1003,10 @@ const [linkUrl, setLinkUrl] = useState("");
             InstaView
           </Link>
 
+          {/* HEADER ACTIONS */}
           <div className="flex items-center gap-3">
 
+            {/* DASHBOARD */}
             <Link
               href="/dashboard"
               className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -883,6 +1014,7 @@ const [linkUrl, setLinkUrl] = useState("");
               Dashboard
             </Link>
 
+            {/* PUBLIC PROFILE */}
             {username && (
               <Link
                 href={`/${username}`}
@@ -893,6 +1025,7 @@ const [linkUrl, setLinkUrl] = useState("");
               </Link>
             )}
 
+            {/* LOGOUT */}
             <button
               onClick={logout}
               className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
@@ -906,7 +1039,8 @@ const [linkUrl, setLinkUrl] = useState("");
 
       </header>
 
-      {/* PAGE */}
+
+      {/* PAGE CONTENT */}
       <div className="mx-auto max-w-6xl px-6 py-10">
 
         <div className="mb-8">
@@ -921,31 +1055,35 @@ const [linkUrl, setLinkUrl] = useState("");
 
         </div>
 
-        {/* MESSAGE */}
+
+        {/* SUCCESS MESSAGE */}
         {message && (
           <div className="mb-4 rounded-xl border border-green-100 bg-green-50 px-5 py-4 text-sm text-green-700">
             {message}
           </div>
         )}
 
-        {/* ERROR */}
+
+        {/* ERROR MESSAGE */}
         {error && (
           <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-600">
             {error}
           </div>
         )}
 
+
         <div className="grid gap-8 lg:grid-cols-3">
 
-          {/* LEFT */}
+          {/* LEFT SIDE */}
           <div className="space-y-8 lg:col-span-2">
 
-            {/* PROFILE */}
+            {/* PROFILE INFORMATION */}
             <section className="rounded-2xl bg-white p-6 shadow-sm">
 
               <h2 className="text-xl font-bold text-slate-900">
                 Profile Information
               </h2>
+
 
               {/* PHOTO */}
               <div className="mt-6 flex items-center gap-5">
@@ -1000,6 +1138,7 @@ const [linkUrl, setLinkUrl] = useState("");
 
               </div>
 
+
               {/* PROFILE FORM */}
               <form
                 onSubmit={
@@ -1041,6 +1180,7 @@ const [linkUrl, setLinkUrl] = useState("");
                         )
                       }
                       placeholder="yourname"
+                      maxLength={30}
                       className="w-full rounded-xl px-2 py-3 outline-none"
                     />
 
@@ -1052,7 +1192,12 @@ const [linkUrl, setLinkUrl] = useState("");
                       "username"}
                   </p>
 
+                  <p className="mt-1 text-xs text-slate-400">
+                    3–30 characters. Letters, numbers, hyphens and underscores only.
+                  </p>
+
                 </div>
+
 
                 {/* DISPLAY NAME */}
                 <div>
@@ -1076,6 +1221,7 @@ const [linkUrl, setLinkUrl] = useState("");
                   />
 
                 </div>
+
 
                 {/* BIO */}
                 <div>
@@ -1103,6 +1249,7 @@ const [linkUrl, setLinkUrl] = useState("");
 
                 </div>
 
+
                 {/* SAVE */}
                 <button
                   type="submit"
@@ -1120,6 +1267,7 @@ const [linkUrl, setLinkUrl] = useState("");
 
             </section>
 
+
             {/* LINKS */}
             <section className="rounded-2xl bg-white p-6 shadow-sm">
 
@@ -1130,6 +1278,7 @@ const [linkUrl, setLinkUrl] = useState("");
               <p className="mt-2 text-sm text-slate-500">
                 Add the links you want visitors to see on your public profile.
               </p>
+
 
               {/* ADD LINK */}
               <form
@@ -1181,6 +1330,7 @@ const [linkUrl, setLinkUrl] = useState("");
 
               </form>
 
+
               {/* EXISTING LINKS */}
               <div className="mt-8 space-y-3">
 
@@ -1218,6 +1368,7 @@ const [linkUrl, setLinkUrl] = useState("");
                           </p>
 
                         </div>
+
 
                         <div className="flex shrink-0 gap-2">
 
@@ -1262,7 +1413,8 @@ const [linkUrl, setLinkUrl] = useState("");
 
           </div>
 
-          {/* RIGHT - PREVIEW */}
+
+          {/* RIGHT SIDE - PREVIEW */}
           <aside className="lg:sticky lg:top-8 lg:self-start">
 
             <div className="rounded-2xl bg-white p-6 shadow-sm">
@@ -1275,6 +1427,8 @@ const [linkUrl, setLinkUrl] = useState("");
                 This is how your profile will appear to visitors.
               </p>
 
+
+              {/* PREVIEW */}
               <div className="mt-6 rounded-2xl bg-slate-50 p-6 text-center">
 
                 {avatarUrl ? (
@@ -1297,16 +1451,19 @@ const [linkUrl, setLinkUrl] = useState("");
 
                 )}
 
+
                 <h3 className="mt-4 text-xl font-bold text-slate-900">
                   {displayName ||
                     username ||
                     "Your Name"}
                 </h3>
 
+
                 <p className="text-sm text-slate-500">
                   @{username ||
                     "username"}
                 </p>
+
 
                 {bio && (
                   <p className="mt-3 text-sm text-slate-600">
@@ -1314,12 +1471,14 @@ const [linkUrl, setLinkUrl] = useState("");
                   </p>
                 )}
 
+
                 <div className="mt-5 space-y-2">
 
                   {links
                     .slice(0, 3)
                     .map(
                       (link) => (
+
                         <div
                           key={
                             link.id
@@ -1330,6 +1489,7 @@ const [linkUrl, setLinkUrl] = useState("");
                             link.title
                           }
                         </div>
+
                       )
                     )}
 
@@ -1337,9 +1497,11 @@ const [linkUrl, setLinkUrl] = useState("");
 
               </div>
 
+
               {/* ACTIONS */}
               <div className="mt-5 grid grid-cols-1 gap-3">
 
+                {/* VIEW PROFILE */}
                 {username && (
                   <Link
                     href={`/${username}`}
@@ -1350,6 +1512,8 @@ const [linkUrl, setLinkUrl] = useState("");
                   </Link>
                 )}
 
+
+                {/* COPY LINK */}
                 <button
                   type="button"
                   onClick={
