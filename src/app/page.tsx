@@ -168,7 +168,7 @@ export default function Home() {
             <img
               src="/logo-full.png"
               alt="InstaView"
-              className="h-auto w-[260px] object-contain sm:w-[320px]"
+              className="h-auto w-[360px] object-contain sm:w-[420px]"
             />
           </div>
 
