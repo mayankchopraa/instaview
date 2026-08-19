@@ -32,22 +32,22 @@ export default function PublicProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  /*
-   * LOAD PROFILE
-   */
   useEffect(() => {
     if (!username) return;
 
     loadProfile();
   }, [username]);
 
+  /*
+   * LOAD PUBLIC PROFILE
+   */
   const loadProfile = async () => {
     setLoading(true);
     setError("");
 
     try {
       /*
-       * GET PROFILE
+       * Find profile
        */
       const {
         data: profileData,
@@ -61,7 +61,7 @@ export default function PublicProfilePage() {
         .single();
 
       /*
-       * PROFILE NOT FOUND
+       * Profile doesn't exist
        */
       if (profileError || !profileData) {
         setError("Profile not found.");
@@ -72,7 +72,7 @@ export default function PublicProfilePage() {
       setProfile(profileData);
 
       /*
-       * GET PROFILE LINKS
+       * Load links
        */
       const {
         data: linksData,
@@ -88,10 +88,9 @@ export default function PublicProfilePage() {
       }
 
       /*
-       * RECORD PROFILE VIEW
+       * Record profile view
        */
       await recordProfileView(profileData.user_id);
-
     } catch (err) {
       console.error(
         "Error loading public profile:",
@@ -113,8 +112,8 @@ export default function PublicProfilePage() {
    * Anonymous visitor:
    * viewer_id = null
    *
-   * Profile owner:
-   * view is not recorded
+   * Profile owner viewing own profile:
+   * not recorded
    */
   const recordProfileView = async (
     profileOwnerId: string
@@ -125,14 +124,14 @@ export default function PublicProfilePage() {
       } = await supabase.auth.getUser();
 
       /*
-       * Do not record owner's own views
+       * Don't count owner viewing own profile
        */
       if (user && user.id === profileOwnerId) {
         return;
       }
 
       /*
-       * LOGGED-IN VISITOR
+       * Logged-in visitor
        */
       if (user) {
         const { error } = await supabase
@@ -155,7 +154,7 @@ export default function PublicProfilePage() {
       }
 
       /*
-       * ANONYMOUS VISITOR
+       * Anonymous visitor
        */
       const { error } = await supabase
         .from("Analytics")
@@ -172,11 +171,10 @@ export default function PublicProfilePage() {
           error
         );
       }
-
     } catch (error) {
       /*
        * Analytics failure should never
-       * stop the profile from loading.
+       * prevent profile from loading.
        */
       console.error(
         "Analytics tracking failed:",
@@ -199,14 +197,15 @@ export default function PublicProfilePage() {
       } = await supabase.auth.getUser();
 
       /*
-       * Do not record owner's own clicks
+       * Don't record owner clicking
+       * own profile link
        */
       if (user && user.id === profile.user_id) {
         return;
       }
 
       /*
-       * LOGGED-IN VISITOR
+       * Logged-in visitor
        */
       if (user) {
         const { error } = await supabase
@@ -229,7 +228,7 @@ export default function PublicProfilePage() {
       }
 
       /*
-       * ANONYMOUS VISITOR
+       * Anonymous visitor
        */
       const { error } = await supabase
         .from("Analytics")
@@ -246,7 +245,6 @@ export default function PublicProfilePage() {
           error
         );
       }
-
     } catch (error) {
       console.error(
         "Link tracking failed:",
@@ -256,19 +254,17 @@ export default function PublicProfilePage() {
   };
 
   /*
-   * LOADING SCREEN
+   * LOADING
    */
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="text-center">
-
           <div className="w-10 h-10 mx-auto rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin" />
 
           <div className="mt-4 text-slate-600 text-sm">
             Loading profile...
           </div>
-
         </div>
       </main>
     );
@@ -280,9 +276,7 @@ export default function PublicProfilePage() {
   if (error || !profile) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
-
         <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 text-center">
-
           <div className="w-20 h-20 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-3xl">
             👤
           </div>
@@ -295,16 +289,13 @@ export default function PublicProfilePage() {
             The profile you are looking for does not exist.
           </p>
 
-          {/* HOME PAGE LINK */}
           <Link
             href="/"
-            className="inline-flex items-center justify-center mt-6 px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition"
+            className="inline-block mt-6 px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
           >
             ← Back to Home
           </Link>
-
         </div>
-
       </main>
     );
   }
@@ -313,25 +304,57 @@ export default function PublicProfilePage() {
    * PUBLIC PROFILE
    */
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:py-10">
 
-      {/* ================================
-          HOME PAGE LINK
-          ================================ */}
-      <div className="max-w-xl mx-auto mb-5">
+      {/* =========================
+          TOP NAVIGATION
+      ========================== */}
+      <div className="max-w-xl mx-auto mb-6">
+        <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
 
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition"
-        >
-          ← Home
-        </Link>
+          <div className="flex items-center justify-between gap-3">
 
+            {/* BRAND / HOME */}
+            <Link
+              href="/"
+              className="flex items-center gap-2 font-semibold text-slate-900 hover:text-slate-700 transition"
+            >
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-sm font-bold">
+                IV
+              </div>
+
+              <span>InstaView</span>
+            </Link>
+
+            {/* AUTH BUTTONS */}
+            <div className="flex items-center gap-2">
+
+              <Link
+                href="/login"
+                className="px-3 sm:px-4 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
+              >
+                Login
+              </Link>
+
+              <Link
+                href="/signup"
+                className="px-3 sm:px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition"
+              >
+                Sign Up
+              </Link>
+
+            </div>
+
+          </div>
+
+        </div>
       </div>
 
-      {/* ================================
-          PROFILE CARD
-          ================================ */}
+
+      {/* =========================
+          PUBLIC PROFILE
+      ========================== */}
+
       <div className="max-w-xl mx-auto">
 
         <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
@@ -345,7 +368,6 @@ export default function PublicProfilePage() {
             <div className="flex justify-center -mt-14">
 
               {profile.avatar_url ? (
-
                 <img
                   src={profile.avatar_url}
                   alt={
@@ -354,16 +376,14 @@ export default function PublicProfilePage() {
                   }
                   className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md"
                 />
-
               ) : (
-
                 <div className="w-28 h-28 rounded-full bg-slate-200 border-4 border-white shadow-md flex items-center justify-center text-4xl">
                   👤
                 </div>
-
               )}
 
             </div>
+
 
             {/* PROFILE INFORMATION */}
             <div className="text-center mt-4">
@@ -385,13 +405,12 @@ export default function PublicProfilePage() {
 
             </div>
 
-            {/* PROFILE LINKS */}
+
+            {/* LINKS */}
             <div className="mt-8 space-y-3">
 
               {links.length > 0 ? (
-
                 links.map((link) => (
-
                   <a
                     key={link.id}
                     href={link.url}
@@ -404,37 +423,68 @@ export default function PublicProfilePage() {
                   >
                     {link.title}
                   </a>
-
                 ))
-
               ) : (
-
                 <div className="text-center text-sm text-slate-400 py-6">
                   No links added yet.
                 </div>
-
               )}
 
             </div>
 
           </div>
+        </div>
+
+
+        {/* =========================
+            CREATE YOUR OWN PROFILE
+        ========================== */}
+
+        <div className="mt-6 bg-white rounded-2xl border border-slate-200 p-6 text-center shadow-sm">
+
+          <h2 className="text-lg font-semibold text-slate-900">
+            Create your own InstaView profile
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Put all your important links in one place and
+            understand how people interact with your profile.
+          </p>
+
+          <div className="mt-4 flex flex-col sm:flex-row justify-center gap-3">
+
+            <Link
+              href="/signup"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition"
+            >
+              Create Free Profile
+            </Link>
+
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 transition"
+            >
+              Login
+            </Link>
+
+          </div>
 
         </div>
+
 
         {/* FOOTER */}
         <div className="text-center mt-6">
 
-          <p className="text-xs text-slate-400">
-            Powered by InstaView
-          </p>
-
-          {/* SECOND HOME LINK IN FOOTER */}
           <Link
             href="/"
-            className="inline-block mt-2 text-xs text-slate-400 hover:text-slate-700 transition"
+            className="text-sm text-slate-500 hover:text-slate-900 transition"
           >
-            Visit InstaView Home
+            ← Visit InstaView Home
           </Link>
+
+          <p className="text-xs text-slate-400 mt-2">
+            Powered by InstaView
+          </p>
 
         </div>
 
