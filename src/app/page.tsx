@@ -92,7 +92,7 @@ export default function Home() {
             <img
               src="/logo-full.png"
               alt="InstaView"
-              className="h-40 w-auto object-contain"
+              className="h-20 w-auto object-contain"
             />
           </Link>
 
