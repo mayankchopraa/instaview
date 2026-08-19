@@ -166,7 +166,7 @@ export default function Home() {
           {/* Hero Logo */}
           <div className="mb-8 flex justify-center">
             <img
-              src="/logo-full.png"
+              src="/logo-icon.png"
               alt="InstaView"
               className="h-auto w-[260px] object-contain sm:w-[320px]"
             />
