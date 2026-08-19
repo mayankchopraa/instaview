@@ -1,426 +1,423 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
+type Profile = {
+  id?: string;
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+};
+
 type ProfileLink = {
   id: string;
+  user_id: string;
   title: string;
   url: string;
 };
 
+/*
+|--------------------------------------------------------------------------
+| RESERVED USERNAMES
+|--------------------------------------------------------------------------
+| These usernames cannot be used because they are application routes
+| or system/admin names.
+*/
+const RESERVED_USERNAMES = new Set([
+  "dashboard",
+  "login",
+  "signup",
+  "sign-up",
+  "register",
+  "registration",
+  "profile",
+  "profiles",
+  "admin",
+  "administrator",
+  "api",
+  "auth",
+  "authentication",
+  "settings",
+  "account",
+  "accounts",
+  "home",
+  "index",
+  "about",
+  "contact",
+  "help",
+  "support",
+  "privacy",
+  "terms",
+  "pricing",
+  "logout",
+  "forgot-password",
+  "reset-password",
+  "verify",
+  "verification",
+  "callback",
+  "invite",
+  "invites",
+  "null",
+  "undefined",
+]);
+
 export default function ProfilePage() {
+  const router = useRouter();
+
+  const [userId, setUserId] = useState("");
+
+  const [profile, setProfile] = useState<Profile | null>(null);
+
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
   const [links, setLinks] = useState<ProfileLink[]>([]);
+
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [linkSaving, setLinkSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [addingLink, setAddingLink] = useState(false);
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  /*
+  |--------------------------------------------------------------------------
+  | LOAD USER
+  |--------------------------------------------------------------------------
+  */
 
   useEffect(() => {
     loadProfile();
   }, []);
 
-  /*
-   * LOAD PROFILE
-   */
   const loadProfile = async () => {
     setLoading(true);
-    setMessage("");
     setError("");
+    setMessage("");
 
     try {
+      /*
+       * Get logged-in user
+       */
       const {
         data: { user },
+        error: userError,
       } = await supabase.auth.getUser();
 
-      if (!user) {
-        window.location.href = "/login";
+      if (userError || !user) {
+        router.push("/login");
         return;
       }
 
+      setUserId(user.id);
+
       /*
-       * FIND EXISTING PROFILE
+       * Load profile
        */
-      const {
-        data: existingProfile,
-        error: profileError,
-      } = await supabase
-        .from("Profiles")
-        .select(
-          "user_id, username, display_name, bio, avatar_url"
-        )
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const { data: profileData, error: profileError } =
+        await supabase
+          .from("Profiles")
+          .select(
+            "id, user_id, username, display_name, bio, avatar_url"
+          )
+          .eq("user_id", user.id)
+          .maybeSingle();
 
       if (profileError) {
-        console.error(
-          "Profile loading error:",
-          profileError
-        );
+        console.error(profileError);
+        setError("Unable to load your profile.");
+        return;
+      }
 
-        setError(profileError.message);
+      if (profileData) {
+        setProfile(profileData);
+
+        setUsername(profileData.username || "");
+        setDisplayName(profileData.display_name || "");
+        setBio(profileData.bio || "");
+        setAvatarUrl(profileData.avatar_url || "");
       }
 
       /*
-       * EXISTING PROFILE
+       * Load profile links
        */
-      if (existingProfile) {
-        setUsername(
-          existingProfile.username || ""
-        );
-
-        setDisplayName(
-          existingProfile.display_name || ""
-        );
-
-        setBio(
-          existingProfile.bio || ""
-        );
-
-        setAvatarUrl(
-          existingProfile.avatar_url || ""
-        );
-      } else {
-        /*
-         * NEW USER
-         *
-         * Works for:
-         * Google
-         * Facebook
-         * GitHub
-         * Email signup
-         */
-        const metadata =
-          user.user_metadata || {};
-
-        const providerName =
-          metadata.full_name ||
-          metadata.name ||
-          "";
-
-        const providerAvatar =
-          metadata.avatar_url ||
-          metadata.picture ||
-          "";
-
-        /*
-         * Create empty profile.
-         *
-         * Username remains empty until
-         * user chooses one.
-         */
-        const {
-          error: createError,
-        } = await supabase
-          .from("Profiles")
-          .insert({
-            user_id: user.id,
-            username: null,
-            display_name:
-              providerName || null,
-            bio: null,
-            avatar_url:
-              providerAvatar || null,
-          });
-
-        if (createError) {
-          console.error(
-            "Profile creation error:",
-            createError
-          );
-
-          setError(
-            createError.message
-          );
-        } else {
-          setDisplayName(
-            providerName
-          );
-
-          setAvatarUrl(
-            providerAvatar
-          );
-        }
-      }
-
-      /*
-       * LOAD LINKS
-       */
-      const {
-        data: linksData,
-        error: linksError,
-      } = await supabase
-        .from("Links")
-        .select("id, title, url")
-        .eq("user_id", user.id)
-        .order("created_at", {
-          ascending: true,
-        });
+      const { data: linksData, error: linksError } =
+        await supabase
+          .from("Links")
+          .select("id, user_id, title, url")
+          .eq("user_id", user.id)
+          .order("id", { ascending: true });
 
       if (linksError) {
-        console.error(
-          "Links loading error:",
-          linksError
-        );
-
-        setError(
-          linksError.message
-        );
+        console.error(linksError);
       }
 
-      setLinks(
-        linksData || []
-      );
-    } catch (error) {
-      console.error(
-        "Profile loading error:",
-        error
-      );
-
-      setError(
-        "Unable to load your profile."
-      );
+      if (linksData) {
+        setLinks(linksData);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong while loading your profile.");
     } finally {
       setLoading(false);
     }
   };
 
   /*
-   * SAVE PROFILE
-   */
-  const saveProfile = async (
-    e: React.FormEvent
+  |--------------------------------------------------------------------------
+  | USERNAME VALIDATION
+  |--------------------------------------------------------------------------
+  */
+
+  const normalizeUsername = (value: string) => {
+    return value
+      .toLowerCase()
+      .trim()
+      .replace(/^@/, "");
+  };
+
+  const validateUsername = (value: string) => {
+    const cleanUsername = normalizeUsername(value);
+
+    /*
+     * Required
+     */
+    if (!cleanUsername) {
+      return "Username is required.";
+    }
+
+    /*
+     * Length
+     */
+    if (cleanUsername.length < 3 || cleanUsername.length > 30) {
+      return "Username must be between 3 and 30 characters.";
+    }
+
+    /*
+     * Allowed characters
+     */
+    if (!/^[a-z0-9_-]+$/.test(cleanUsername)) {
+      return "Username can contain only letters, numbers, hyphens and underscores.";
+    }
+
+    /*
+     * Reserved username
+     */
+    if (RESERVED_USERNAMES.has(cleanUsername)) {
+      return `"${cleanUsername}" is a reserved username. Please choose another one.`;
+    }
+
+    return "";
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | CHECK USERNAME AVAILABILITY
+  |--------------------------------------------------------------------------
+  */
+
+  const checkUsernameAvailability = async (
+    cleanUsername: string
   ) => {
-    e.preventDefault();
+    const { data, error: usernameError } = await supabase
+      .from("Profiles")
+      .select("user_id")
+      .eq("username", cleanUsername)
+      .maybeSingle();
 
-    setMessage("");
+    if (usernameError) {
+      console.error(usernameError);
+      return {
+        available: false,
+        error: "Unable to check username availability.",
+      };
+    }
+
+    /*
+     * No profile found = available
+     */
+    if (!data) {
+      return {
+        available: true,
+        error: "",
+      };
+    }
+
+    /*
+     * Existing profile belongs to current user
+     */
+    if (data.user_id === userId) {
+      return {
+        available: true,
+        error: "",
+      };
+    }
+
+    return {
+      available: false,
+      error: "This username is already taken.",
+    };
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | SAVE PROFILE
+  |--------------------------------------------------------------------------
+  */
+
+  const handleSaveProfile = async () => {
     setError("");
+    setMessage("");
+
+    const cleanUsername = normalizeUsername(username);
 
     /*
-     * USERNAME REQUIRED
+     * Validate username
      */
-    if (!username.trim()) {
-      setError(
-        "Username is required."
-      );
+    const usernameValidation = validateUsername(cleanUsername);
+
+    if (usernameValidation) {
+      setError(usernameValidation);
       return;
     }
 
-    /*
-     * CLEAN USERNAME
-     */
-    const cleanUsername =
-      username
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(
-          /[^a-z0-9-_]/g,
-          ""
-        );
-
-    /*
-     * MINIMUM USERNAME LENGTH
-     */
-    if (cleanUsername.length < 3) {
-      setError(
-        "Username must be at least 3 characters."
-      );
-      return;
-    }
-
-    /*
-     * MAXIMUM USERNAME LENGTH
-     */
-    if (cleanUsername.length > 30) {
-      setError(
-        "Username cannot be longer than 30 characters."
-      );
-      return;
-    }
-
-    /*
-     * USERNAME FORMAT
-     */
-    if (
-      !/^[a-z0-9][a-z0-9-_]*$/.test(
-        cleanUsername
-      )
-    ) {
-      setError(
-        "Username can only contain letters, numbers, hyphens and underscores."
-      );
+    if (!userId) {
+      setError("You are not logged in.");
       return;
     }
 
     setSaving(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      /*
+       * Check username availability
+       */
+      const availability =
+        await checkUsernameAvailability(cleanUsername);
 
-      if (!user) {
-        window.location.href =
-          "/login";
+      if (!availability.available) {
+        setError(
+          availability.error ||
+            "This username is not available."
+        );
+
+        setSaving(false);
         return;
       }
 
       /*
-       * CHECK IF USERNAME IS ALREADY
-       * USED BY ANOTHER USER
+       * Save profile
        */
-      const {
-        data: usernameOwner,
-        error: usernameCheckError,
-      } = await supabase
-        .from("Profiles")
-        .select("user_id")
-        .eq(
-          "username",
-          cleanUsername
-        )
-        .neq(
-          "user_id",
-          user.id
-        )
-        .maybeSingle();
-
-      if (usernameCheckError) {
-        console.error(
-          "Username check error:",
-          usernameCheckError
-        );
-
-        setError(
-          "Unable to check username availability. Please try again."
-        );
-
-        return;
-      }
-
-      if (usernameOwner) {
-        setError(
-          "This username is already taken. Please choose another."
-        );
-
-        return;
-      }
+      const profileData = {
+        user_id: userId,
+        username: cleanUsername,
+        display_name:
+          displayName.trim() || null,
+        bio: bio.trim() || null,
+        avatar_url:
+          avatarUrl.trim() || null,
+      };
 
       /*
-       * CHECK RESERVED USERNAME
-       *
-       * Prevent users from using
-       * application routes as usernames.
-       *
-       * Example:
-       * /login
-       * /signup
-       * /dashboard
-       * /profile
-       * /settings
+       * If profile exists -> UPDATE
        */
-      const {
-        data: reservedUsername,
-        error: reservedUsernameError,
-      } = await supabase
-        .from("ReservedUsernames")
-        .select("username")
-        .eq(
-          "username",
-          cleanUsername
-        )
-        .maybeSingle();
+      if (profile) {
+        const { data, error: updateError } =
+          await supabase
+            .from("Profiles")
+            .update({
+              username: profileData.username,
+              display_name: profileData.display_name,
+              bio: profileData.bio,
+              avatar_url: profileData.avatar_url,
+            })
+            .eq("user_id", userId)
+            .select(
+              "id, user_id, username, display_name, bio, avatar_url"
+            )
+            .single();
 
-      if (reservedUsernameError) {
-        console.error(
-          "Reserved username check error:",
-          reservedUsernameError
-        );
+        if (updateError) {
+          console.error(updateError);
 
-        setError(
-          "Unable to check reserved usernames. Please try again."
-        );
-
-        return;
-      }
-
-      if (reservedUsername) {
-        setError(
-          `"${cleanUsername}" is reserved. Please choose another username.`
-        );
-
-        return;
-      }
-
-      /*
-       * SAVE PROFILE
-       */
-      const {
-        error: saveError,
-      } = await supabase
-        .from("Profiles")
-        .upsert(
-          {
-            user_id: user.id,
-            username:
-              cleanUsername,
-            display_name:
-              displayName.trim() ||
-              null,
-            bio:
-              bio.trim() ||
-              null,
-            avatar_url:
-              avatarUrl ||
-              null,
-          },
-          {
-            onConflict:
-              "user_id",
+          if (
+            updateError.code === "23505"
+          ) {
+            setError(
+              "This username is already taken. Please choose another username."
+            );
+          } else {
+            setError(
+              updateError.message ||
+                "Unable to save your profile."
+            );
           }
-        );
 
-      if (saveError) {
-        console.error(
-          "Save profile error:",
-          saveError
-        );
+          setSaving(false);
+          return;
+        }
 
-        setError(
-          saveError.message
-        );
+        setProfile(data);
 
-        return;
+        setUsername(data.username);
+        setDisplayName(data.display_name || "");
+        setBio(data.bio || "");
+        setAvatarUrl(data.avatar_url || "");
+      } else {
+        /*
+         * No profile -> INSERT
+         */
+        const { data, error: insertError } =
+          await supabase
+            .from("Profiles")
+            .insert(profileData)
+            .select(
+              "id, user_id, username, display_name, bio, avatar_url"
+            )
+            .single();
+
+        if (insertError) {
+          console.error(insertError);
+
+          if (
+            insertError.code === "23505"
+          ) {
+            setError(
+              "This username is already taken. Please choose another username."
+            );
+          } else {
+            setError(
+              insertError.message ||
+                "Unable to create your profile."
+            );
+          }
+
+          setSaving(false);
+          return;
+        }
+
+        setProfile(data);
       }
 
-      setUsername(
-        cleanUsername
-      );
+      setUsername(cleanUsername);
 
       setMessage(
         "Profile saved successfully!"
       );
-    } catch (error) {
-      console.error(
-        "Save profile error:",
-        error
-      );
-
+    } catch (err) {
+      console.error(err);
       setError(
-        "Unable to save your profile."
+        "Something went wrong while saving your profile."
       );
     } finally {
       setSaving(false);
@@ -428,438 +425,109 @@ export default function ProfilePage() {
   };
 
   /*
-   * UPLOAD PROFILE PHOTO
-   */
-  const uploadAvatar = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file =
-      e.target.files?.[0];
+  |--------------------------------------------------------------------------
+  | ADD LINK
+  |--------------------------------------------------------------------------
+  */
 
-    if (!file) {
-      return;
-    }
-
-    setMessage("");
+  const handleAddLink = async () => {
     setError("");
-
-    /*
-     * CHECK FILE TYPE
-     */
-    if (
-      !file.type.startsWith(
-        "image/"
-      )
-    ) {
-      setError(
-        "Please select an image file."
-      );
-
-      return;
-    }
-
-    /*
-     * MAX 5MB
-     */
-    if (
-      file.size >
-      5 * 1024 * 1024
-    ) {
-      setError(
-        "Image must be smaller than 5MB."
-      );
-
-      return;
-    }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      window.location.href =
-        "/login";
-
-      return;
-    }
-
-    setUploading(true);
-
-    try {
-      const extension =
-        file.name
-          .split(".")
-          .pop() ||
-        "jpg";
-
-      const filePath =
-        `${user.id}/avatar-${Date.now()}.${extension}`;
-
-      /*
-       * UPLOAD
-       */
-      const {
-        error: uploadError,
-      } = await supabase.storage
-        .from("avatars")
-        .upload(
-          filePath,
-          file,
-          {
-            upsert: true,
-          }
-        );
-
-      if (uploadError) {
-        console.error(
-          "Avatar upload error:",
-          uploadError
-        );
-
-        setError(
-          uploadError.message
-        );
-
-        return;
-      }
-
-      /*
-       * GET PUBLIC URL
-       */
-      const {
-        data,
-      } =
-        supabase.storage
-          .from("avatars")
-          .getPublicUrl(
-            filePath
-          );
-
-      const publicUrl =
-        data.publicUrl;
-
-      /*
-       * SAVE URL TO PROFILE
-       */
-      const {
-        error: updateError,
-      } = await supabase
-        .from("Profiles")
-        .upsert(
-          {
-            user_id: user.id,
-            avatar_url:
-              publicUrl,
-          },
-          {
-            onConflict:
-              "user_id",
-          }
-        );
-
-      if (updateError) {
-        console.error(
-          "Avatar profile update error:",
-          updateError
-        );
-
-        setError(
-          updateError.message
-        );
-
-        return;
-      }
-
-      setAvatarUrl(
-        publicUrl
-      );
-
-      setMessage(
-        "Profile photo updated successfully!"
-      );
-    } catch (error) {
-      console.error(
-        "Avatar upload error:",
-        error
-      );
-
-      setError(
-        "Unable to upload the photo."
-      );
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  /*
-   * ADD LINK
-   */
-  const addLink = async (
-    e: React.FormEvent
-  ) => {
-    e.preventDefault();
-
     setMessage("");
-    setError("");
 
-    /*
-     * REQUIRED FIELDS
-     */
-    if (
-      !linkTitle.trim() ||
-      !linkUrl.trim()
-    ) {
-      setError(
-        "Please enter both the link title and URL."
-      );
+    const title = linkTitle.trim();
+    const url = linkUrl.trim();
 
+    if (!title) {
+      setError("Please enter a link title.");
       return;
     }
 
-    let validUrl =
-      linkUrl.trim();
-
-    /*
-     * ADD HTTPS IF NEEDED
-     */
-    if (
-      !validUrl.startsWith(
-        "http://"
-      ) &&
-      !validUrl.startsWith(
-        "https://"
-      )
-    ) {
-      validUrl =
-        `https://${validUrl}`;
+    if (!url) {
+      setError("Please enter a link URL.");
+      return;
     }
 
     /*
-     * BASIC URL VALIDATION
+     * Automatically add https://
+     */
+    let finalUrl = url;
+
+    if (
+      !finalUrl.startsWith("http://") &&
+      !finalUrl.startsWith("https://")
+    ) {
+      finalUrl = `https://${finalUrl}`;
+    }
+
+    /*
+     * Validate URL
      */
     try {
-      new URL(validUrl);
+      new URL(finalUrl);
     } catch {
-      setError(
-        "Please enter a valid URL."
-      );
-
+      setError("Please enter a valid URL.");
       return;
     }
 
-    setLinkSaving(true);
+    if (!userId) {
+      setError("You are not logged in.");
+      return;
+    }
+
+    setAddingLink(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data, error: insertError } =
+        await supabase
+          .from("Links")
+          .insert({
+            user_id: userId,
+            title,
+            url: finalUrl,
+          })
+          .select("id, user_id, title, url")
+          .single();
 
-      if (!user) {
-        window.location.href =
-          "/login";
-
-        return;
-      }
-
-      const {
-        data,
-        error,
-      } = await supabase
-        .from("Links")
-        .insert({
-          user_id:
-            user.id,
-          title:
-            linkTitle.trim(),
-          url: validUrl,
-        })
-        .select(
-          "id, title, url"
-        )
-        .single();
-
-      if (error) {
-        console.error(
-          "Add link error:",
-          error
-        );
-
+      if (insertError) {
+        console.error(insertError);
         setError(
-          error.message
+          insertError.message ||
+            "Unable to add link."
         );
 
+        setAddingLink(false);
         return;
       }
 
-      if (data) {
-        setLinks(
-          (current) => [
-            ...current,
-            data,
-          ]
-        );
-      }
+      setLinks((current) => [
+        ...current,
+        data,
+      ]);
 
       setLinkTitle("");
       setLinkUrl("");
 
-      setMessage(
-        "Link added successfully!"
-      );
-    } catch (error) {
-      console.error(
-        "Add link error:",
-        error
-      );
-
-      setError(
-        "Unable to add link."
-      );
+      setMessage("Link added successfully.");
+    } catch (err) {
+      console.error(err);
+      setError("Unable to add link.");
     } finally {
-      setLinkSaving(false);
+      setAddingLink(false);
     }
   };
 
   /*
-   * EDIT LINK
-   */
-  const editLink = async (
-    id: string,
-    currentTitle: string,
-    currentUrl: string
+  |--------------------------------------------------------------------------
+  | DELETE LINK
+  |--------------------------------------------------------------------------
+  */
+
+  const handleDeleteLink = async (
+    linkId: string
   ) => {
-    const newTitle =
-      window.prompt(
-        "Enter link title:",
-        currentTitle
-      );
-
-    if (
-      newTitle === null
-    ) {
-      return;
-    }
-
-    const newUrlInput =
-      window.prompt(
-        "Enter link URL:",
-        currentUrl
-      );
-
-    if (
-      newUrlInput === null
-    ) {
-      return;
-    }
-
-    if (
-      !newTitle.trim() ||
-      !newUrlInput.trim()
-    ) {
-      setError(
-        "Both fields are required."
-      );
-
-      return;
-    }
-
-    let newUrl =
-      newUrlInput.trim();
-
-    if (
-      !newUrl.startsWith(
-        "http://"
-      ) &&
-      !newUrl.startsWith(
-        "https://"
-      )
-    ) {
-      newUrl =
-        `https://${newUrl}`;
-    }
-
-    /*
-     * VALIDATE URL
-     */
-    try {
-      new URL(newUrl);
-    } catch {
-      setError(
-        "Please enter a valid URL."
-      );
-
-      return;
-    }
-
-    setMessage("");
     setError("");
+    setMessage("");
 
-    try {
-      const {
-        data,
-        error,
-      } = await supabase
-        .from("Links")
-        .update({
-          title:
-            newTitle.trim(),
-          url: newUrl,
-        })
-        .eq(
-          "id",
-          id
-        )
-        .select(
-          "id, title, url"
-        )
-        .single();
-
-      if (error) {
-        console.error(
-          "Edit link error:",
-          error
-        );
-
-        setError(
-          error.message
-        );
-
-        return;
-      }
-
-      if (data) {
-        setLinks(
-          (current) =>
-            current.map(
-              (link) =>
-                link.id === id
-                  ? data
-                  : link
-            )
-        );
-      }
-
-      setMessage(
-        "Link updated successfully!"
-      );
-    } catch (error) {
-      console.error(
-        "Edit link error:",
-        error
-      );
-
-      setError(
-        "Unable to update link."
-      );
-    }
-  };
-
-  /*
-   * DELETE LINK
-   */
-  const deleteLink = async (
-    id: string
-  ) => {
     const confirmed =
       window.confirm(
         "Are you sure you want to delete this link?"
@@ -869,557 +537,369 @@ export default function ProfilePage() {
       return;
     }
 
-    setMessage("");
-    setError("");
-
     try {
-      const {
-        error,
-      } = await supabase
-        .from("Links")
-        .delete()
-        .eq(
-          "id",
-          id
-        );
+      const { error: deleteError } =
+        await supabase
+          .from("Links")
+          .delete()
+          .eq("id", linkId)
+          .eq("user_id", userId);
 
-      if (error) {
-        console.error(
-          "Delete link error:",
-          error
-        );
-
+      if (deleteError) {
+        console.error(deleteError);
         setError(
-          error.message
+          deleteError.message ||
+            "Unable to delete link."
         );
-
         return;
       }
 
-      setLinks(
-        (current) =>
-          current.filter(
-            (link) =>
-              link.id !== id
-          )
+      setLinks((current) =>
+        current.filter(
+          (link) => link.id !== linkId
+        )
+      );
+
+      setMessage("Link deleted.");
+    } catch (err) {
+      console.error(err);
+      setError("Unable to delete link.");
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | COPY PROFILE LINK
+  |--------------------------------------------------------------------------
+  */
+
+  const getPublicProfileUrl = () => {
+    if (!username) {
+      return "";
+    }
+
+    if (typeof window === "undefined") {
+      return "";
+    }
+
+    return `${window.location.origin}/${normalizeUsername(
+      username
+    )}`;
+  };
+
+  const handleCopyProfileLink = async () => {
+    const publicUrl =
+      getPublicProfileUrl();
+
+    if (!publicUrl) {
+      setError(
+        "Please save your username first."
+      );
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        publicUrl
       );
 
       setMessage(
-        "Link deleted successfully!"
+        "Profile link copied successfully!"
       );
-    } catch (error) {
-      console.error(
-        "Delete link error:",
-        error
-      );
-
+    } catch (err) {
+      console.error(err);
       setError(
-        "Unable to delete link."
+        "Unable to copy profile link."
       );
     }
   };
 
   /*
-   * COPY PUBLIC PROFILE URL
-   */
-  const copyProfileUrl =
-    async () => {
-      if (!username) {
-        setError(
-          "Please save your username first."
-        );
+  |--------------------------------------------------------------------------
+  | SIGN OUT
+  |--------------------------------------------------------------------------
+  */
 
-        return;
-      }
-
-      const url =
-        `${window.location.origin}/${username}`;
-
-      try {
-        await navigator.clipboard.writeText(
-          url
-        );
-
-        setMessage(
-          "Profile link copied!"
-        );
-      } catch (error) {
-        console.error(
-          "Copy link error:",
-          error
-        );
-
-        setError(
-          "Unable to copy profile link."
-        );
-      }
-    };
-
-  /*
-   * LOGOUT
-   */
-  const logout = async () => {
+  const handleLogout = async () => {
     await supabase.auth.signOut();
-
-    window.location.href =
-      "/";
+    router.push("/");
   };
 
   /*
-   * LOADING
-   */
+  |--------------------------------------------------------------------------
+  | LOADING
+  |--------------------------------------------------------------------------
+  */
+
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-100">
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
         <div className="text-center">
-
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-900" />
+          <div className="w-10 h-10 mx-auto rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin" />
 
           <p className="mt-4 text-sm text-slate-500">
             Loading your profile...
           </p>
-
         </div>
       </main>
     );
   }
 
   /*
-   * PAGE
-   */
+  |--------------------------------------------------------------------------
+  | PUBLIC PROFILE URL
+  |--------------------------------------------------------------------------
+  */
+
+  const publicProfileUrl =
+    username
+      ? `/${normalizeUsername(username)}`
+      : "";
+
+  /*
+  |--------------------------------------------------------------------------
+  | PAGE
+  |--------------------------------------------------------------------------
+  */
+
   return (
-    <main className="min-h-screen bg-slate-100">
-
+    <main className="min-h-screen bg-slate-50">
       {/* HEADER */}
-      <header className="border-b bg-white">
 
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-
-          {/* LOGO */}
+      <header className="bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <Link
             href="/"
-            className="text-xl font-bold text-slate-900"
+            className="flex items-center gap-3"
           >
-            InstaView
+            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold">
+              IV
+            </div>
+
+            <span className="text-xl font-bold text-slate-900">
+              InstaView
+            </span>
           </Link>
 
-          {/* HEADER ACTIONS */}
-          <div className="flex items-center gap-3">
-
-            {/* DASHBOARD */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/dashboard"
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               Dashboard
             </Link>
 
-            {/* PUBLIC PROFILE */}
-            {username && (
-              <Link
-                href={`/${username}`}
-                target="_blank"
-                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                View Public Profile
-              </Link>
-            )}
-
-            {/* LOGOUT */}
             <button
-              onClick={logout}
-              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
             >
               Logout
             </button>
-
           </div>
-
         </div>
-
       </header>
 
+      {/* CONTENT */}
 
-      {/* PAGE CONTENT */}
-      <div className="mx-auto max-w-6xl px-6 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
-        <div className="mb-8">
+        {/* MESSAGES */}
 
-          <h1 className="text-3xl font-bold text-slate-900">
-            Edit Your Profile
-          </h1>
-
-          <p className="mt-2 text-slate-500">
-            Manage your profile, photo and links.
-          </p>
-
-        </div>
-
-
-        {/* SUCCESS MESSAGE */}
         {message && (
-          <div className="mb-4 rounded-xl border border-green-100 bg-green-50 px-5 py-4 text-sm text-green-700">
+          <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-5 py-4 text-sm text-green-700">
             {message}
           </div>
         )}
 
-
-        {/* ERROR MESSAGE */}
         {error && (
-          <div className="mb-6 rounded-xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-600">
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
+        {/* TOP NAV */}
 
-        <div className="grid gap-8 lg:grid-cols-3">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <Link
+            href="/dashboard"
+            className="text-sm font-medium text-slate-500 hover:text-slate-900"
+          >
+            ← Back to Dashboard
+          </Link>
+        </div>
 
-          {/* LEFT SIDE */}
-          <div className="space-y-8 lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-            {/* PROFILE INFORMATION */}
-            <section className="rounded-2xl bg-white p-6 shadow-sm">
+          {/* LEFT */}
 
-              <h2 className="text-xl font-bold text-slate-900">
-                Profile Information
-              </h2>
+          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
 
+            <h1 className="text-2xl font-bold text-slate-900">
+              Profile Information
+            </h1>
 
-              {/* PHOTO */}
-              <div className="mt-6 flex items-center gap-5">
+            <p className="mt-2 text-sm text-slate-500">
+              Edit the information visitors will see on your public profile.
+            </p>
 
-                {avatarUrl ? (
+            {/* AVATAR */}
 
-                  <img
-                    src={avatarUrl}
-                    alt="Profile"
-                    className="h-24 w-24 rounded-full object-cover"
-                  />
-
-                ) : (
-
-                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-900 text-3xl font-bold text-white">
-                    {(displayName ||
-                      username ||
-                      "U")
-                      .charAt(0)
-                      .toUpperCase()}
-                  </div>
-
-                )}
-
-                <div>
-
-                  <label className="inline-block cursor-pointer rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-
-                    {uploading
-                      ? "Uploading..."
-                      : "Change Photo"}
-
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={
-                        uploadAvatar
-                      }
-                      disabled={
-                        uploading
-                      }
-                      className="hidden"
-                    />
-
-                  </label>
-
-                  <p className="mt-2 text-xs text-slate-400">
-                    JPG, PNG or WebP. Maximum 5MB.
-                  </p>
-
+            <div className="mt-8 flex items-center gap-5">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-slate-900 text-white flex items-center justify-center text-3xl font-bold">
+                  {(
+                    displayName ||
+                    username ||
+                    "U"
+                  )
+                    .charAt(0)
+                    .toUpperCase()}
                 </div>
+              )}
 
-              </div>
-
-
-              {/* PROFILE FORM */}
-              <form
-                onSubmit={
-                  saveProfile
-                }
-                className="mt-8 space-y-5"
-              >
-
-                {/* USERNAME */}
-                <div>
-
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Username
-                  </label>
-
-                  <div className="flex items-center rounded-xl border border-slate-200 bg-white">
-
-                    <span className="pl-4 text-slate-400">
-                      /
-                    </span>
-
-                    <input
-                      type="text"
-                      value={
-                        username
-                      }
-                      onChange={(e) =>
-                        setUsername(
-                          e.target.value
-                            .toLowerCase()
-                            .replace(
-                              /\s+/g,
-                              "-"
-                            )
-                            .replace(
-                              /[^a-z0-9-_]/g,
-                              ""
-                            )
-                        )
-                      }
-                      placeholder="yourname"
-                      maxLength={30}
-                      className="w-full rounded-xl px-2 py-3 outline-none"
-                    />
-
-                  </div>
-
-                  <p className="mt-2 text-xs text-slate-400">
-                    Your public profile will be available at /
-                    {username ||
-                      "username"}
-                  </p>
-
-                  <p className="mt-1 text-xs text-slate-400">
-                    3–30 characters. Letters, numbers, hyphens and underscores only.
-                  </p>
-
-                </div>
-
-
-                {/* DISPLAY NAME */}
-                <div>
-
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Display Name
-                  </label>
+              <div>
+                <label className="inline-block cursor-pointer px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  Change Photo
 
                   <input
                     type="text"
-                    value={
-                      displayName
-                    }
+                    value={avatarUrl}
                     onChange={(e) =>
-                      setDisplayName(
-                        e.target.value
-                      )
+                      setAvatarUrl(e.target.value)
                     }
-                    placeholder="Your name"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
+                    className="hidden"
                   />
+                </label>
 
-                </div>
+                <p className="mt-2 text-xs text-slate-400">
+                  Enter an image URL below.
+                </p>
+              </div>
+            </div>
 
+            {/* AVATAR URL */}
 
-                {/* BIO */}
-                <div>
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Profile Photo URL
+              </label>
 
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Bio
-                  </label>
-
-                  <textarea
-                    value={bio}
-                    onChange={(e) =>
-                      setBio(
-                        e.target.value
-                      )
-                    }
-                    rows={4}
-                    maxLength={300}
-                    placeholder="Tell people about yourself..."
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
-                  />
-
-                  <p className="mt-1 text-xs text-slate-400">
-                    {bio.length}/300
-                  </p>
-
-                </div>
-
-
-                {/* SAVE */}
-                <button
-                  type="submit"
-                  disabled={
-                    saving
-                  }
-                  className="rounded-xl bg-slate-900 px-6 py-3 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                >
-                  {saving
-                    ? "Saving..."
-                    : "Save Profile"}
-                </button>
-
-              </form>
-
-            </section>
-
-
-            {/* LINKS */}
-            <section className="rounded-2xl bg-white p-6 shadow-sm">
-
-              <h2 className="text-xl font-bold text-slate-900">
-                My Links
-              </h2>
-
-              <p className="mt-2 text-sm text-slate-500">
-                Add the links you want visitors to see on your public profile.
-              </p>
-
-
-              {/* ADD LINK */}
-              <form
-                onSubmit={
-                  addLink
+              <input
+                type="url"
+                value={avatarUrl}
+                onChange={(e) =>
+                  setAvatarUrl(e.target.value)
                 }
-                className="mt-6 space-y-4"
-              >
+                placeholder="https://example.com/photo.jpg"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+
+            {/* USERNAME */}
+
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Username
+              </label>
+
+              <div className="flex rounded-xl border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-slate-100 focus-within:border-slate-400">
+                <div className="px-4 py-3 bg-slate-50 text-slate-400">
+                  /
+                </div>
 
                 <input
                   type="text"
-                  value={
-                    linkTitle
-                  }
+                  value={username}
                   onChange={(e) =>
-                    setLinkTitle(
+                    setUsername(
                       e.target.value
+                        .toLowerCase()
+                        .replace(/\s/g, "")
                     )
                   }
-                  placeholder="Link title e.g. Instagram"
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
+                  placeholder="yourname"
+                  className="flex-1 px-4 py-3 outline-none"
                 />
-
-                <input
-                  type="url"
-                  value={
-                    linkUrl
-                  }
-                  onChange={(e) =>
-                    setLinkUrl(
-                      e.target.value
-                    )
-                  }
-                  placeholder="https://example.com"
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
-                />
-
-                <button
-                  type="submit"
-                  disabled={
-                    linkSaving
-                  }
-                  className="rounded-xl bg-slate-900 px-6 py-3 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                >
-                  {linkSaving
-                    ? "Adding..."
-                    : "Add Link"}
-                </button>
-
-              </form>
-
-
-              {/* EXISTING LINKS */}
-              <div className="mt-8 space-y-3">
-
-                {links.length ===
-                0 ? (
-
-                  <p className="text-sm text-slate-400">
-                    No links added yet.
-                  </p>
-
-                ) : (
-
-                  links.map(
-                    (link) => (
-
-                      <div
-                        key={
-                          link.id
-                        }
-                        className="flex flex-col gap-4 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between"
-                      >
-
-                        <div className="min-w-0">
-
-                          <p className="font-medium text-slate-900">
-                            {
-                              link.title
-                            }
-                          </p>
-
-                          <p className="mt-1 break-all text-sm text-slate-500">
-                            {
-                              link.url
-                            }
-                          </p>
-
-                        </div>
-
-
-                        <div className="flex shrink-0 gap-2">
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              editLink(
-                                link.id,
-                                link.title,
-                                link.url
-                              )
-                            }
-                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              deleteLink(
-                                link.id
-                              )
-                            }
-                            className="rounded-lg bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-700"
-                          >
-                            Delete
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    )
-                  )
-
-                )}
-
               </div>
 
-            </section>
+              <p className="mt-2 text-xs text-slate-400">
+                3–30 characters. Letters, numbers,
+                hyphens and underscores only.
+              </p>
 
-          </div>
+              <p className="mt-1 text-xs text-slate-400">
+                Your public profile will be available at:
+                {" "}
+                <span className="font-medium text-slate-500">
+                  /{normalizeUsername(username) || "username"}
+                </span>
+              </p>
+            </div>
 
+            {/* DISPLAY NAME */}
 
-          {/* RIGHT SIDE - PREVIEW */}
-          <aside className="lg:sticky lg:top-8 lg:self-start">
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Display Name
+              </label>
 
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) =>
+                  setDisplayName(e.target.value)
+                }
+                placeholder="Your name"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
 
-              <h2 className="text-xl font-bold text-slate-900">
+            {/* BIO */}
+
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Bio
+              </label>
+
+              <textarea
+                value={bio}
+                onChange={(e) =>
+                  setBio(e.target.value)
+                }
+                placeholder="Tell people about yourself..."
+                rows={5}
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none resize-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+
+            {/* SAVE */}
+
+            <button
+              onClick={handleSaveProfile}
+              disabled={saving}
+              className="mt-6 w-full rounded-xl bg-slate-900 px-5 py-3.5 text-white font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving
+                ? "Saving..."
+                : "Save Profile"}
+            </button>
+          </section>
+
+          {/* RIGHT */}
+
+          <section className="space-y-8">
+
+            {/* PUBLIC PROFILE */}
+
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
+
+              <h2 className="text-2xl font-bold text-slate-900">
                 Your Public Profile
               </h2>
 
@@ -1427,30 +907,27 @@ export default function ProfilePage() {
                 This is how your profile will appear to visitors.
               </p>
 
-
               {/* PREVIEW */}
+
               <div className="mt-6 rounded-2xl bg-slate-50 p-6 text-center">
 
                 {avatarUrl ? (
-
                   <img
                     src={avatarUrl}
-                    alt="Profile"
-                    className="mx-auto h-20 w-20 rounded-full object-cover"
+                    alt="Preview"
+                    className="w-24 h-24 mx-auto rounded-full object-cover shadow-sm"
                   />
-
                 ) : (
-
-                  <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-900 text-2xl font-bold text-white">
-                    {(displayName ||
+                  <div className="w-24 h-24 mx-auto rounded-full bg-slate-900 text-white flex items-center justify-center text-3xl font-bold">
+                    {(
+                      displayName ||
                       username ||
-                      "U")
+                      "U"
+                    )
                       .charAt(0)
                       .toUpperCase()}
                   </div>
-
                 )}
-
 
                 <h3 className="mt-4 text-xl font-bold text-slate-900">
                   {displayName ||
@@ -1458,85 +935,176 @@ export default function ProfilePage() {
                     "Your Name"}
                 </h3>
 
-
                 <p className="text-sm text-slate-500">
-                  @{username ||
+                  @
+                  {normalizeUsername(username) ||
                     "username"}
                 </p>
-
 
                 {bio && (
                   <p className="mt-3 text-sm text-slate-600">
                     {bio}
                   </p>
                 )}
-
-
-                <div className="mt-5 space-y-2">
-
-                  {links
-                    .slice(0, 3)
-                    .map(
-                      (link) => (
-
-                        <div
-                          key={
-                            link.id
-                          }
-                          className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
-                        >
-                          {
-                            link.title
-                          }
-                        </div>
-
-                      )
-                    )}
-
-                </div>
-
               </div>
 
+              {/* BUTTONS */}
 
-              {/* ACTIONS */}
-              <div className="mt-5 grid grid-cols-1 gap-3">
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
 
-                {/* VIEW PROFILE */}
-                {username && (
-                  <Link
-                    href={`/${username}`}
-                    target="_blank"
-                    className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    View Public Profile
-                  </Link>
-                )}
+                <Link
+                  href={
+                    publicProfileUrl || "/"
+                  }
+                  target={
+                    username
+                      ? "_blank"
+                      : undefined
+                  }
+                  className={`rounded-xl px-5 py-3 text-center text-sm font-semibold border ${
+                    username
+                      ? "border-slate-200 text-slate-700 hover:bg-slate-50"
+                      : "border-slate-100 text-slate-300 pointer-events-none"
+                  }`}
+                >
+                  View Public Profile
+                </Link>
 
-
-                {/* COPY LINK */}
                 <button
-                  type="button"
-                  onClick={
-                    copyProfileUrl
-                  }
-                  disabled={
-                    !username
-                  }
-                  className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={handleCopyProfileLink}
+                  className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
                 >
                   Copy Profile Link
                 </button>
 
               </div>
 
+              {username && (
+                <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 text-sm text-slate-500 break-all">
+                  {typeof window !==
+                  "undefined"
+                    ? `${window.location.origin}/${normalizeUsername(
+                        username
+                      )}`
+                    : `/${normalizeUsername(
+                        username
+                      )}`}
+                </div>
+              )}
             </div>
 
-          </aside>
+            {/* LINKS */}
 
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
+
+              <h2 className="text-2xl font-bold text-slate-900">
+                Profile Links
+              </h2>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Add websites and social media links to your public profile.
+              </p>
+
+              {/* EXISTING LINKS */}
+
+              <div className="mt-6 space-y-3">
+
+                {links.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">
+                    No links added yet.
+                  </div>
+                ) : (
+                  links.map((link) => (
+                    <div
+                      key={link.id}
+                      className="flex items-center gap-3 rounded-xl border border-slate-200 p-4"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 truncate">
+                          {link.title}
+                        </p>
+
+                        <p className="text-xs text-slate-400 truncate mt-1">
+                          {link.url}
+                        </p>
+                      </div>
+
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                      >
+                        View
+                      </a>
+
+                      <button
+                        onClick={() =>
+                          handleDeleteLink(
+                            link.id
+                          )
+                        }
+                        className="px-3 py-2 rounded-lg border border-red-100 text-xs font-medium text-red-500 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))
+                )}
+
+              </div>
+
+              {/* ADD LINK */}
+
+              <div className="mt-6 border-t border-slate-100 pt-6">
+
+                <h3 className="font-semibold text-slate-900">
+                  Add New Link
+                </h3>
+
+                <div className="mt-4 space-y-3">
+
+                  <input
+                    type="text"
+                    value={linkTitle}
+                    onChange={(e) =>
+                      setLinkTitle(
+                        e.target.value
+                      )
+                    }
+                    placeholder="Link title e.g. Instagram"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  />
+
+                  <input
+                    type="url"
+                    value={linkUrl}
+                    onChange={(e) =>
+                      setLinkUrl(
+                        e.target.value
+                      )
+                    }
+                    placeholder="https://instagram.com/username"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  />
+
+                  <button
+                    onClick={handleAddLink}
+                    disabled={addingLink}
+                    className="w-full rounded-xl bg-slate-900 px-5 py-3 text-white font-semibold hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {addingLink
+                      ? "Adding..."
+                      : "+ Add Link"}
+                  </button>
+
+                </div>
+              </div>
+
+            </div>
+          </section>
         </div>
-
       </div>
-
     </main>
   );
 }
