@@ -84,26 +84,20 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
-
       {/* Navigation */}
-      <nav className="border-b border-slate-100">
+      <nav className="border-b border-slate-100 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
-              IV
-            </div>
-
-            <span className="text-xl font-bold tracking-tight">
-              InstaView
-            </span>
+          {/* Full InstaView Logo */}
+          <Link href="/" className="flex items-center">
+            <img
+              src="/logo-full.png"
+              alt="InstaView"
+              className="h-12 w-auto object-contain"
+            />
           </Link>
-
 
           {/* Navigation Buttons */}
           <div className="flex items-center gap-3">
-
             {loading ? (
               <div className="h-9 w-24 rounded-lg bg-slate-100 animate-pulse" />
             ) : user ? (
@@ -162,21 +156,25 @@ export default function Home() {
                 </Link>
               </>
             )}
-
           </div>
         </div>
       </nav>
 
-
       {/* Hero */}
       <section className="relative overflow-hidden">
-
-        <div className="mx-auto max-w-6xl px-6 pb-20 pt-24 text-center sm:pt-32">
+        <div className="mx-auto max-w-6xl px-6 pb-20 pt-20 text-center sm:pt-28">
+          {/* Hero Logo */}
+          <div className="mb-8 flex justify-center">
+            <img
+              src="/logo-full.png"
+              alt="InstaView"
+              className="h-auto w-[260px] object-contain sm:w-[320px]"
+            />
+          </div>
 
           <div className="mx-auto mb-6 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600">
             Understand your social audience
           </div>
-
 
           <h1 className="mx-auto max-w-4xl text-5xl font-bold tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
             Know who interacts with your
@@ -185,16 +183,13 @@ export default function Home() {
             </span>
           </h1>
 
-
           <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-slate-600">
             Create your personal InstaView link and understand how visitors
             interact with your profile, links and content.
           </p>
 
-
           {/* Hero Buttons */}
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-
             {loading ? (
               <div className="h-14 w-56 rounded-xl bg-slate-100 animate-pulse" />
             ) : user ? (
@@ -243,19 +238,15 @@ export default function Home() {
                 </a>
               </>
             )}
-
           </div>
 
-
-          {/* Example link */}
+          {/* Example Link */}
           <div className="mx-auto mt-14 max-w-xl rounded-2xl border border-slate-200 bg-slate-50 p-5 text-left shadow-sm">
-
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
               Your InstaView link
             </p>
 
             <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm">
-
               <span className="text-sm font-medium text-slate-700">
                 instaview.app/mayank
               </span>
@@ -263,21 +254,15 @@ export default function Home() {
               <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
                 Copy
               </span>
-
             </div>
           </div>
-
         </div>
       </section>
 
-
       {/* Features */}
       <section className="border-y border-slate-100 bg-slate-50">
-
         <div className="mx-auto max-w-6xl px-6 py-20">
-
           <div className="mx-auto max-w-2xl text-center">
-
             <p className="text-sm font-semibold uppercase tracking-wider text-slate-400">
               Simple insights
             </p>
@@ -290,12 +275,9 @@ export default function Home() {
               See what people do after they arrive through your InstaView
               profile.
             </p>
-
           </div>
 
-
           <div className="mt-12 grid gap-6 md:grid-cols-3">
-
             <Feature
               number="01"
               title="Track visits"
@@ -313,25 +295,15 @@ export default function Home() {
               title="Identify interest"
               description="Recognize returning visitors and stronger engagement patterns."
             />
-
           </div>
-
         </div>
       </section>
 
-
-      {/* How it works */}
-      <section
-        id="how-it-works"
-        className="bg-white"
-      >
-
+      {/* How It Works */}
+      <section id="how-it-works" className="bg-white">
         <div className="mx-auto max-w-6xl px-6 py-20">
-
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-
             <div>
-
               <p className="text-sm font-semibold uppercase tracking-wider text-slate-400">
                 How it works
               </p>
@@ -345,9 +317,7 @@ export default function Home() {
                 want people to discover you.
               </p>
 
-
               <div className="mt-8 space-y-5">
-
                 <Step
                   number="1"
                   title="Create your profile"
@@ -365,21 +335,14 @@ export default function Home() {
                   title="Understand interactions"
                   description="See visits and activity through your dashboard."
                 />
-
               </div>
-
             </div>
 
-
-            {/* Dashboard mockup */}
+            {/* Dashboard Mockup */}
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-xl shadow-slate-100">
-
               <div className="rounded-2xl bg-white p-6">
-
                 <div className="flex items-center justify-between">
-
                   <div>
-
                     <p className="text-sm text-slate-400">
                       Profile visits
                     </p>
@@ -387,18 +350,14 @@ export default function Home() {
                     <p className="mt-1 text-3xl font-bold">
                       1,248
                     </p>
-
                   </div>
 
                   <div className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
                     +18.4%
                   </div>
-
                 </div>
 
-
                 <div className="mt-8 flex h-32 items-end gap-2">
-
                   {[
                     35,
                     52,
@@ -421,14 +380,10 @@ export default function Home() {
                       }}
                     />
                   ))}
-
                 </div>
 
-
                 <div className="mt-8 grid grid-cols-2 gap-4">
-
                   <div className="rounded-xl bg-slate-50 p-4">
-
                     <p className="text-xs text-slate-400">
                       Returning visitors
                     </p>
@@ -436,12 +391,9 @@ export default function Home() {
                     <p className="mt-1 text-xl font-bold">
                       284
                     </p>
-
                   </div>
 
-
                   <div className="rounded-xl bg-slate-50 p-4">
-
                     <p className="text-xs text-slate-400">
                       Link interactions
                     </p>
@@ -449,27 +401,17 @@ export default function Home() {
                     <p className="mt-1 text-xl font-bold">
                       436
                     </p>
-
                   </div>
-
                 </div>
-
               </div>
-
             </div>
-
           </div>
-
         </div>
-
       </section>
-
 
       {/* CTA */}
       <section className="bg-slate-950">
-
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
-
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Start understanding your audience.
           </h2>
@@ -479,12 +421,9 @@ export default function Home() {
             interact with your online presence.
           </p>
 
-
           {/* CTA Button */}
           {!loading && user ? (
-
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-
               <Link
                 href="/dashboard"
                 className="rounded-xl bg-white px-7 py-3.5 text-sm font-semibold text-slate-950 hover:bg-slate-100"
@@ -501,46 +440,33 @@ export default function Home() {
                   View Profile
                 </Link>
               )}
-
             </div>
-
           ) : (
-
             <Link
               href="/signup"
               className="mt-8 inline-block rounded-xl bg-white px-7 py-3.5 text-sm font-semibold text-slate-950 hover:bg-slate-100"
             >
               Create Your Free Profile
             </Link>
-
           )}
-
         </div>
-
       </section>
-
 
       {/* Footer */}
       <footer className="bg-slate-950 pb-8">
-
         <div className="mx-auto flex max-w-6xl flex-col gap-3 border-t border-slate-800 px-6 pt-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-
           <span>
             © 2026 InstaView
           </span>
 
           <span>
-            Understand interactions. Build better connections.
+            Track. Analyze. Engage.
           </span>
-
         </div>
-
       </footer>
-
     </main>
   );
 }
-
 
 /* Feature Component */
 function Feature({
@@ -554,7 +480,6 @@ function Feature({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-7">
-
       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-xs font-bold text-white">
         {number}
       </div>
@@ -566,11 +491,9 @@ function Feature({
       <p className="mt-3 text-sm leading-6 text-slate-600">
         {description}
       </p>
-
     </div>
   );
 }
-
 
 /* Step Component */
 function Step({
@@ -584,13 +507,11 @@ function Step({
 }) {
   return (
     <div className="flex gap-4">
-
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-bold text-white">
         {number}
       </div>
 
       <div>
-
         <h3 className="font-semibold text-slate-950">
           {title}
         </h3>
@@ -598,9 +519,7 @@ function Step({
         <p className="mt-1 text-sm leading-6 text-slate-600">
           {description}
         </p>
-
       </div>
-
     </div>
   );
 }
