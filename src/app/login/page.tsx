@@ -14,6 +14,8 @@ export default function LoginPage() {
   const [oauthLoading, setOauthLoading] =
     useState<OAuthProvider | null>(null);
 
+  const [resending, setResending] = useState(false);
+
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -34,7 +36,7 @@ export default function LoginPage() {
         data,
         error: loginError,
       } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
       });
 
@@ -49,20 +51,41 @@ export default function LoginPage() {
       }
 
       /*
-       * Successful login
+       * EMAIL VERIFICATION CHECK
+       *
+       * If the user has not verified their email,
+       * immediately sign them out.
+       */
+      if (!data.user.email_confirmed_at) {
+        await supabase.auth.signOut();
+
+        setError(
+          "Please verify your email address before logging in."
+        );
+
+        return;
+      }
+
+      /*
+       * VERIFIED USER
        */
       window.location.href = "/dashboard";
 
     } catch (err) {
       console.error(err);
-      setError("Something went wrong. Please try again.");
+      setError(
+        "Something went wrong. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
+
   /*
    * SOCIAL LOGIN
+   *
+   * Google / Facebook / GitHub
    */
   const handleOAuthLogin = async (
     provider: OAuthProvider
@@ -72,15 +95,31 @@ export default function LoginPage() {
     setMessage("");
 
     try {
+      /*
+       * Send the provider back through the
+       * authentication callback.
+       */
       const redirectTo =
-        `${window.location.origin}/dashboard`;
+        `${window.location.origin}/auth/callback`;
 
       const {
         error: oauthError,
       } = await supabase.auth.signInWithOAuth({
         provider,
+
         options: {
           redirectTo,
+
+          /*
+           * Google account selection
+           */
+          queryParams:
+            provider === "google"
+              ? {
+                  access_type: "offline",
+                  prompt: "select_account",
+                }
+              : undefined,
         },
       });
 
@@ -91,19 +130,24 @@ export default function LoginPage() {
 
     } catch (err) {
       console.error(err);
+
       setError(
         "Unable to continue with this provider."
       );
+
       setOauthLoading(null);
     }
   };
+
 
   /*
    * MAGIC LINK
    */
   const handleMagicLink = async () => {
     if (!email.trim()) {
-      setError("Please enter your email address first.");
+      setError(
+        "Please enter your email address first."
+      );
       return;
     }
 
@@ -115,10 +159,11 @@ export default function LoginPage() {
       const {
         error: magicLinkError,
       } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
+
         options: {
           emailRedirectTo:
-            `${window.location.origin}/dashboard`,
+            `${window.location.origin}/auth/callback`,
         },
       });
 
@@ -133,13 +178,67 @@ export default function LoginPage() {
 
     } catch (err) {
       console.error(err);
+
       setError(
         "Unable to send the magic link."
       );
+
     } finally {
       setLoading(false);
     }
   };
+
+
+  /*
+   * RESEND EMAIL VERIFICATION
+   */
+  const handleResendVerification = async () => {
+    if (!email.trim()) {
+      setError(
+        "Please enter your email address first."
+      );
+      return;
+    }
+
+    setResending(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const {
+        error: resendError,
+      } = await supabase.auth.resend({
+        type: "signup",
+
+        email: email.trim().toLowerCase(),
+
+        options: {
+          emailRedirectTo:
+            `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (resendError) {
+        setError(resendError.message);
+        return;
+      }
+
+      setMessage(
+        "A new verification email has been sent. Please check your inbox."
+      );
+
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        "Unable to resend the verification email."
+      );
+
+    } finally {
+      setResending(false);
+    }
+  };
+
 
   /*
    * FORGOT PASSWORD
@@ -160,7 +259,7 @@ export default function LoginPage() {
       const {
         error: resetError,
       } = await supabase.auth.resetPasswordForEmail(
-        email.trim(),
+        email.trim().toLowerCase(),
         {
           redirectTo:
             `${window.location.origin}/update-password`,
@@ -178,26 +277,32 @@ export default function LoginPage() {
 
     } catch (err) {
       console.error(err);
+
       setError(
         "Unable to send password reset email."
       );
+
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10">
 
       {/* HOME */}
       <div className="max-w-md mx-auto mb-6">
+
         <Link
           href="/"
           className="text-sm font-medium text-slate-500 hover:text-slate-900 transition"
         >
           ← Home
         </Link>
+
       </div>
+
 
       <div className="max-w-md mx-auto">
 
@@ -206,10 +311,13 @@ export default function LoginPage() {
 
           {/* LOGO */}
           <div className="flex justify-center">
+
             <div className="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-xl font-bold">
               IV
             </div>
+
           </div>
+
 
           {/* TITLE */}
           <div className="text-center mt-5">
@@ -224,6 +332,7 @@ export default function LoginPage() {
 
           </div>
 
+
           {/* SOCIAL LOGIN */}
           <div className="mt-8 space-y-3">
 
@@ -233,7 +342,10 @@ export default function LoginPage() {
               onClick={() =>
                 handleOAuthLogin("google")
               }
-              disabled={oauthLoading !== null}
+              disabled={
+                oauthLoading !== null ||
+                loading
+              }
               className="w-full h-12 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium hover:bg-slate-50 transition disabled:opacity-50"
             >
               {oauthLoading === "google"
@@ -241,13 +353,17 @@ export default function LoginPage() {
                 : "Continue with Google"}
             </button>
 
+
             {/* FACEBOOK */}
             <button
               type="button"
               onClick={() =>
                 handleOAuthLogin("facebook")
               }
-              disabled={oauthLoading !== null}
+              disabled={
+                oauthLoading !== null ||
+                loading
+              }
               className="w-full h-12 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium hover:bg-slate-50 transition disabled:opacity-50"
             >
               {oauthLoading === "facebook"
@@ -255,13 +371,17 @@ export default function LoginPage() {
                 : "Continue with Facebook"}
             </button>
 
+
             {/* GITHUB */}
             <button
               type="button"
               onClick={() =>
                 handleOAuthLogin("github")
               }
-              disabled={oauthLoading !== null}
+              disabled={
+                oauthLoading !== null ||
+                loading
+              }
               className="w-full h-12 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium hover:bg-slate-50 transition disabled:opacity-50"
             >
               {oauthLoading === "github"
@@ -270,6 +390,7 @@ export default function LoginPage() {
             </button>
 
           </div>
+
 
           {/* DIVIDER */}
           <div className="flex items-center gap-4 my-7">
@@ -283,6 +404,7 @@ export default function LoginPage() {
             <div className="flex-1 h-px bg-slate-200" />
 
           </div>
+
 
           {/* EMAIL LOGIN */}
           <form
@@ -314,6 +436,7 @@ export default function LoginPage() {
               />
 
             </div>
+
 
             {/* PASSWORD */}
             <div>
@@ -352,10 +475,14 @@ export default function LoginPage() {
 
             </div>
 
+
             {/* LOGIN BUTTON */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={
+                loading ||
+                oauthLoading !== null
+              }
               className="w-full h-12 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition disabled:opacity-50"
             >
               {loading
@@ -365,15 +492,20 @@ export default function LoginPage() {
 
           </form>
 
+
           {/* MAGIC LINK */}
           <button
             type="button"
             onClick={handleMagicLink}
-            disabled={loading}
+            disabled={
+              loading ||
+              oauthLoading !== null
+            }
             className="w-full mt-4 h-11 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
           >
             Login with Magic Link
           </button>
+
 
           {/* ERROR */}
           {error && (
@@ -382,12 +514,29 @@ export default function LoginPage() {
             </div>
           )}
 
+
           {/* SUCCESS */}
           {message && (
             <div className="mt-5 rounded-xl bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-700">
               {message}
             </div>
           )}
+
+
+          {/* RESEND VERIFICATION */}
+          {error.includes("verify your email") && (
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={resending}
+              className="w-full mt-3 h-11 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              {resending
+                ? "Sending..."
+                : "Resend Verification Email"}
+            </button>
+          )}
+
 
           {/* SIGNUP */}
           <div className="text-center mt-7 pt-6 border-t border-slate-100">
@@ -406,6 +555,7 @@ export default function LoginPage() {
           </div>
 
         </div>
+
 
         {/* FOOTER */}
         <p className="text-center text-xs text-slate-400 mt-6">

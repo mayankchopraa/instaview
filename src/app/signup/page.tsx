@@ -10,8 +10,7 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] =
-    useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] =
@@ -30,6 +29,22 @@ export default function SignupPage() {
 
     setError("");
     setMessage("");
+
+    /*
+     * CHECK NAME
+     */
+    if (!name.trim()) {
+      setError("Please enter your name.");
+      return;
+    }
+
+    /*
+     * CHECK EMAIL
+     */
+    if (!email.trim()) {
+      setError("Please enter your email address.");
+      return;
+    }
 
     /*
      * CHECK PASSWORD
@@ -54,55 +69,77 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
+      /*
+       * IMPORTANT:
+       * After clicking the verification email,
+       * Supabase will return the user to:
+       *
+       * /auth/callback
+       */
+      const redirectTo =
+        `${window.location.origin}/auth/callback`;
+
       const {
         data,
         error: signupError,
       } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
+
         options: {
           data: {
             full_name: name.trim(),
           },
-          emailRedirectTo:
-            `${window.location.origin}/dashboard`,
+
+          emailRedirectTo: redirectTo,
         },
       });
 
+      /*
+       * SIGNUP ERROR
+       */
       if (signupError) {
         setError(signupError.message);
         return;
       }
 
       /*
-       * Email confirmation enabled
+       * EMAIL VERIFICATION REQUIRED
+       *
+       * When Supabase email confirmation is enabled,
+       * there will be a user but no active session.
        */
-      if (
-        data.user &&
-        !data.session
-      ) {
+      if (data.user && !data.session) {
         setMessage(
-          "Account created! Please check your email and confirm your account before logging in."
+          "Account created! Please check your email and click the verification link to activate your InstaView account."
         );
 
         return;
       }
 
       /*
-       * Auto-confirmation enabled
+       * IF EMAIL CONFIRMATION IS DISABLED
+       *
+       * This keeps the code compatible with your
+       * current Supabase configuration.
        */
       if (data.session) {
-        window.location.href =
-          "/dashboard";
+        window.location.href = "/dashboard";
         return;
       }
 
+      /*
+       * FALLBACK
+       */
       setMessage(
-        "Account created successfully."
+        "Account created successfully. Please check your email."
       );
 
     } catch (err) {
-      console.error(err);
+      console.error(
+        "Signup error:",
+        err
+      );
 
       setError(
         "Something went wrong. Please try again."
@@ -112,12 +149,13 @@ export default function SignupPage() {
     }
   };
 
+
   /*
    * SOCIAL SIGNUP
    *
-   * OAuth automatically creates the
-   * account if the user doesn't already
-   * have one.
+   * Google / Facebook / GitHub
+   *
+   * We are NOT changing these options.
    */
   const handleOAuthSignup = async (
     provider: OAuthProvider
@@ -127,15 +165,21 @@ export default function SignupPage() {
     setMessage("");
 
     try {
+      /*
+       * Social login returns through the same
+       * authentication callback.
+       */
       const redirectTo =
-        `${window.location.origin}/dashboard`;
+        `${window.location.origin}/auth/callback`;
 
       const {
         error: oauthError,
       } = await supabase.auth.signInWithOAuth({
         provider,
+
         options: {
           redirectTo,
+
           queryParams:
             provider === "google"
               ? {
@@ -152,7 +196,10 @@ export default function SignupPage() {
       }
 
     } catch (err) {
-      console.error(err);
+      console.error(
+        "OAuth signup error:",
+        err
+      );
 
       setError(
         "Unable to continue with this provider."
@@ -161,6 +208,7 @@ export default function SignupPage() {
       setOauthLoading(null);
     }
   };
+
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10">
@@ -177,6 +225,7 @@ export default function SignupPage() {
 
       </div>
 
+
       <div className="max-w-md mx-auto">
 
         {/* CARD */}
@@ -191,6 +240,7 @@ export default function SignupPage() {
 
           </div>
 
+
           {/* TITLE */}
           <div className="text-center mt-5">
 
@@ -204,6 +254,7 @@ export default function SignupPage() {
 
           </div>
 
+
           {/* SOCIAL SIGNUP */}
           <div className="mt-8 space-y-3">
 
@@ -213,7 +264,10 @@ export default function SignupPage() {
               onClick={() =>
                 handleOAuthSignup("google")
               }
-              disabled={oauthLoading !== null}
+              disabled={
+                oauthLoading !== null ||
+                loading
+              }
               className="w-full h-12 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium hover:bg-slate-50 transition disabled:opacity-50"
             >
               {oauthLoading === "google"
@@ -221,13 +275,17 @@ export default function SignupPage() {
                 : "Continue with Google"}
             </button>
 
+
             {/* FACEBOOK */}
             <button
               type="button"
               onClick={() =>
                 handleOAuthSignup("facebook")
               }
-              disabled={oauthLoading !== null}
+              disabled={
+                oauthLoading !== null ||
+                loading
+              }
               className="w-full h-12 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium hover:bg-slate-50 transition disabled:opacity-50"
             >
               {oauthLoading === "facebook"
@@ -235,13 +293,17 @@ export default function SignupPage() {
                 : "Continue with Facebook"}
             </button>
 
+
             {/* GITHUB */}
             <button
               type="button"
               onClick={() =>
                 handleOAuthSignup("github")
               }
-              disabled={oauthLoading !== null}
+              disabled={
+                oauthLoading !== null ||
+                loading
+              }
               className="w-full h-12 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium hover:bg-slate-50 transition disabled:opacity-50"
             >
               {oauthLoading === "github"
@@ -250,6 +312,7 @@ export default function SignupPage() {
             </button>
 
           </div>
+
 
           {/* DIVIDER */}
           <div className="flex items-center gap-4 my-7">
@@ -263,6 +326,7 @@ export default function SignupPage() {
             <div className="flex-1 h-px bg-slate-200" />
 
           </div>
+
 
           {/* EMAIL SIGNUP */}
           <form
@@ -295,6 +359,7 @@ export default function SignupPage() {
 
             </div>
 
+
             {/* EMAIL */}
             <div>
 
@@ -319,6 +384,7 @@ export default function SignupPage() {
               />
 
             </div>
+
 
             {/* PASSWORD */}
             <div>
@@ -345,6 +411,7 @@ export default function SignupPage() {
               />
 
             </div>
+
 
             {/* CONFIRM PASSWORD */}
             <div>
@@ -374,10 +441,14 @@ export default function SignupPage() {
 
             </div>
 
+
             {/* SIGNUP BUTTON */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={
+                loading ||
+                oauthLoading !== null
+              }
               className="w-full h-12 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition disabled:opacity-50"
             >
               {loading
@@ -387,6 +458,7 @@ export default function SignupPage() {
 
           </form>
 
+
           {/* ERROR */}
           {error && (
             <div className="mt-5 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">
@@ -394,12 +466,30 @@ export default function SignupPage() {
             </div>
           )}
 
+
           {/* SUCCESS */}
           {message && (
             <div className="mt-5 rounded-xl bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-700">
-              {message}
+
+              <p>
+                {message}
+              </p>
+
+              <p className="mt-2 text-xs text-green-600">
+                Check your spam or promotions folder if
+                you don't see the email.
+              </p>
+
+              <Link
+                href="/login"
+                className="inline-block mt-3 font-semibold underline"
+              >
+                Go to Login
+              </Link>
+
             </div>
           )}
+
 
           {/* LOGIN */}
           <div className="text-center mt-7 pt-6 border-t border-slate-100">
@@ -418,6 +508,7 @@ export default function SignupPage() {
           </div>
 
         </div>
+
 
         {/* FOOTER */}
         <p className="text-center text-xs text-slate-400 mt-6">

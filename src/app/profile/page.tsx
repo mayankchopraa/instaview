@@ -25,9 +25,8 @@ type ProfileLink = {
 |--------------------------------------------------------------------------
 | RESERVED USERNAMES
 |--------------------------------------------------------------------------
-| These usernames cannot be used because they are application routes
-| or system/admin names.
 */
+
 const RESERVED_USERNAMES = new Set([
   "dashboard",
   "login",
@@ -86,13 +85,14 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [addingLink, setAddingLink] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   /*
   |--------------------------------------------------------------------------
-  | LOAD USER
+  | LOAD PROFILE
   |--------------------------------------------------------------------------
   */
 
@@ -109,6 +109,7 @@ export default function ProfilePage() {
       /*
        * Get logged-in user
        */
+
       const {
         data: { user },
         error: userError,
@@ -124,17 +125,21 @@ export default function ProfilePage() {
       /*
        * Load profile
        */
-      const { data: profileData, error: profileError } =
-        await supabase
-          .from("Profiles")
-          .select(
-            "id, user_id, username, display_name, bio, avatar_url"
-          )
-          .eq("user_id", user.id)
-          .maybeSingle();
+
+      const {
+        data: profileData,
+        error: profileError,
+      } = await supabase
+        .from("Profiles")
+        .select(
+          "id, user_id, username, display_name, bio, avatar_url"
+        )
+        .eq("user_id", user.id)
+        .maybeSingle();
 
       if (profileError) {
         console.error(profileError);
+
         setError("Unable to load your profile.");
         return;
       }
@@ -151,12 +156,17 @@ export default function ProfilePage() {
       /*
        * Load profile links
        */
-      const { data: linksData, error: linksError } =
-        await supabase
-          .from("Links")
-          .select("id, user_id, title, url")
-          .eq("user_id", user.id)
-          .order("id", { ascending: true });
+
+      const {
+        data: linksData,
+        error: linksError,
+      } = await supabase
+        .from("Links")
+        .select("id, user_id, title, url")
+        .eq("user_id", user.id)
+        .order("id", {
+          ascending: true,
+        });
 
       if (linksError) {
         console.error(linksError);
@@ -167,7 +177,10 @@ export default function ProfilePage() {
       }
     } catch (err) {
       console.error(err);
-      setError("Something went wrong while loading your profile.");
+
+      setError(
+        "Something went wrong while loading your profile."
+      );
     } finally {
       setLoading(false);
     }
@@ -175,7 +188,7 @@ export default function ProfilePage() {
 
   /*
   |--------------------------------------------------------------------------
-  | USERNAME VALIDATION
+  | USERNAME NORMALIZATION
   |--------------------------------------------------------------------------
   */
 
@@ -186,34 +199,34 @@ export default function ProfilePage() {
       .replace(/^@/, "");
   };
 
-  const validateUsername = (value: string) => {
-    const cleanUsername = normalizeUsername(value);
+  /*
+  |--------------------------------------------------------------------------
+  | USERNAME VALIDATION
+  |--------------------------------------------------------------------------
+  */
 
-    /*
-     * Required
-     */
+  const validateUsername = (value: string) => {
+    const cleanUsername =
+      normalizeUsername(value);
+
     if (!cleanUsername) {
       return "Username is required.";
     }
 
-    /*
-     * Length
-     */
-    if (cleanUsername.length < 3 || cleanUsername.length > 30) {
+    if (
+      cleanUsername.length < 3 ||
+      cleanUsername.length > 30
+    ) {
       return "Username must be between 3 and 30 characters.";
     }
 
-    /*
-     * Allowed characters
-     */
     if (!/^[a-z0-9_-]+$/.test(cleanUsername)) {
       return "Username can contain only letters, numbers, hyphens and underscores.";
     }
 
-    /*
-     * Reserved username
-     */
-    if (RESERVED_USERNAMES.has(cleanUsername)) {
+    if (
+      RESERVED_USERNAMES.has(cleanUsername)
+    ) {
       return `"${cleanUsername}" is a reserved username. Please choose another one.`;
     }
 
@@ -229,7 +242,10 @@ export default function ProfilePage() {
   const checkUsernameAvailability = async (
     cleanUsername: string
   ) => {
-    const { data, error: usernameError } = await supabase
+    const {
+      data,
+      error: usernameError,
+    } = await supabase
       .from("Profiles")
       .select("user_id")
       .eq("username", cleanUsername)
@@ -237,15 +253,18 @@ export default function ProfilePage() {
 
     if (usernameError) {
       console.error(usernameError);
+
       return {
         available: false,
-        error: "Unable to check username availability.",
+        error:
+          "Unable to check username availability.",
       };
     }
 
     /*
-     * No profile found = available
+     * Username does not exist
      */
+
     if (!data) {
       return {
         available: true,
@@ -254,8 +273,9 @@ export default function ProfilePage() {
     }
 
     /*
-     * Existing profile belongs to current user
+     * Username belongs to current user
      */
+
     if (data.user_id === userId) {
       return {
         available: true,
@@ -279,12 +299,15 @@ export default function ProfilePage() {
     setError("");
     setMessage("");
 
-    const cleanUsername = normalizeUsername(username);
+    const cleanUsername =
+      normalizeUsername(username);
 
     /*
      * Validate username
      */
-    const usernameValidation = validateUsername(cleanUsername);
+
+    const usernameValidation =
+      validateUsername(cleanUsername);
 
     if (usernameValidation) {
       setError(usernameValidation);
@@ -300,10 +323,13 @@ export default function ProfilePage() {
 
     try {
       /*
-       * Check username availability
+       * Check username
        */
+
       const availability =
-        await checkUsernameAvailability(cleanUsername);
+        await checkUsernameAvailability(
+          cleanUsername
+        );
 
       if (!availability.available) {
         setError(
@@ -316,8 +342,9 @@ export default function ProfilePage() {
       }
 
       /*
-       * Save profile
+       * Profile data
        */
+
       const profileData = {
         user_id: userId,
         username: cleanUsername,
@@ -329,23 +356,29 @@ export default function ProfilePage() {
       };
 
       /*
-       * If profile exists -> UPDATE
+       * Existing profile
        */
+
       if (profile) {
-        const { data, error: updateError } =
-          await supabase
-            .from("Profiles")
-            .update({
-              username: profileData.username,
-              display_name: profileData.display_name,
-              bio: profileData.bio,
-              avatar_url: profileData.avatar_url,
-            })
-            .eq("user_id", userId)
-            .select(
-              "id, user_id, username, display_name, bio, avatar_url"
-            )
-            .single();
+        const {
+          data,
+          error: updateError,
+        } = await supabase
+          .from("Profiles")
+          .update({
+            username:
+              profileData.username,
+            display_name:
+              profileData.display_name,
+            bio: profileData.bio,
+            avatar_url:
+              profileData.avatar_url,
+          })
+          .eq("user_id", userId)
+          .select(
+            "id, user_id, username, display_name, bio, avatar_url"
+          )
+          .single();
 
         if (updateError) {
           console.error(updateError);
@@ -370,21 +403,28 @@ export default function ProfilePage() {
         setProfile(data);
 
         setUsername(data.username);
-        setDisplayName(data.display_name || "");
+        setDisplayName(
+          data.display_name || ""
+        );
         setBio(data.bio || "");
-        setAvatarUrl(data.avatar_url || "");
+        setAvatarUrl(
+          data.avatar_url || ""
+        );
       } else {
         /*
-         * No profile -> INSERT
+         * Create profile
          */
-        const { data, error: insertError } =
-          await supabase
-            .from("Profiles")
-            .insert(profileData)
-            .select(
-              "id, user_id, username, display_name, bio, avatar_url"
-            )
-            .single();
+
+        const {
+          data,
+          error: insertError,
+        } = await supabase
+          .from("Profiles")
+          .insert(profileData)
+          .select(
+            "id, user_id, username, display_name, bio, avatar_url"
+          )
+          .single();
 
         if (insertError) {
           console.error(insertError);
@@ -416,11 +456,210 @@ export default function ProfilePage() {
       );
     } catch (err) {
       console.error(err);
+
       setError(
         "Something went wrong while saving your profile."
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | UPLOAD PROFILE PHOTO
+  |--------------------------------------------------------------------------
+  */
+
+  const uploadAvatar = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file =
+      e.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    setMessage("");
+    setError("");
+
+    /*
+     * Check file type
+     */
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setError(
+        "Please upload a JPG, PNG or WebP image."
+      );
+
+      e.target.value = "";
+      return;
+    }
+
+    /*
+     * Maximum 5MB
+     */
+
+    if (
+      file.size >
+      5 * 1024 * 1024
+    ) {
+      setError(
+        "Image must be smaller than 5MB."
+      );
+
+      e.target.value = "";
+      return;
+    }
+
+    /*
+     * Get logged-in user
+     */
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      /*
+       * File extension
+       */
+
+      const extension =
+        file.name
+          .split(".")
+          .pop()
+          ?.toLowerCase() || "jpg";
+
+      /*
+       * Unique file path
+       */
+
+      const filePath =
+        `${user.id}/avatar-${Date.now()}.${extension}`;
+
+      /*
+       * Upload to Supabase Storage
+       *
+       * Bucket:
+       * avatars
+       */
+
+      const {
+        error: uploadError,
+      } = await supabase.storage
+        .from("avatars")
+        .upload(
+          filePath,
+          file,
+          {
+            cacheControl: "3600",
+            upsert: true,
+            contentType: file.type,
+          }
+        );
+
+      if (uploadError) {
+        console.error(
+          "Avatar upload error:",
+          uploadError
+        );
+
+        setError(
+          uploadError.message ||
+            "Unable to upload photo."
+        );
+
+        return;
+      }
+
+      /*
+       * Get public URL
+       */
+
+      const {
+        data: publicUrlData,
+      } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      const publicUrl =
+        publicUrlData.publicUrl;
+
+      /*
+       * Update Profiles table
+       */
+
+      const {
+        data: updatedProfile,
+        error: updateError,
+      } = await supabase
+        .from("Profiles")
+        .update({
+          avatar_url: publicUrl,
+        })
+        .eq("user_id", user.id)
+        .select(
+          "id, user_id, username, display_name, bio, avatar_url"
+        )
+        .single();
+
+      if (updateError) {
+        console.error(
+          "Avatar profile update error:",
+          updateError
+        );
+
+        setError(
+          updateError.message ||
+            "Photo uploaded but profile could not be updated."
+        );
+
+        return;
+      }
+
+      /*
+       * Update screen immediately
+       */
+
+      setAvatarUrl(publicUrl);
+
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
+
+      setMessage(
+        "Profile photo uploaded successfully!"
+      );
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        "Something went wrong while uploading the photo."
+      );
+    } finally {
+      setUploading(false);
+
+      /*
+       * Allow the same file to be
+       * selected again.
+       */
+
+      e.target.value = "";
     }
   };
 
@@ -434,62 +673,87 @@ export default function ProfilePage() {
     setError("");
     setMessage("");
 
-    const title = linkTitle.trim();
-    const url = linkUrl.trim();
+    const title =
+      linkTitle.trim();
+
+    const url =
+      linkUrl.trim();
 
     if (!title) {
-      setError("Please enter a link title.");
+      setError(
+        "Please enter a link title."
+      );
       return;
     }
 
     if (!url) {
-      setError("Please enter a link URL.");
+      setError(
+        "Please enter a link URL."
+      );
       return;
     }
 
     /*
      * Automatically add https://
      */
+
     let finalUrl = url;
 
     if (
-      !finalUrl.startsWith("http://") &&
-      !finalUrl.startsWith("https://")
+      !finalUrl.startsWith(
+        "http://"
+      ) &&
+      !finalUrl.startsWith(
+        "https://"
+      )
     ) {
-      finalUrl = `https://${finalUrl}`;
+      finalUrl =
+        `https://${finalUrl}`;
     }
 
     /*
      * Validate URL
      */
+
     try {
       new URL(finalUrl);
     } catch {
-      setError("Please enter a valid URL.");
+      setError(
+        "Please enter a valid URL."
+      );
       return;
     }
 
     if (!userId) {
-      setError("You are not logged in.");
+      setError(
+        "You are not logged in."
+      );
       return;
     }
 
     setAddingLink(true);
 
     try {
-      const { data, error: insertError } =
-        await supabase
-          .from("Links")
-          .insert({
-            user_id: userId,
-            title,
-            url: finalUrl,
-          })
-          .select("id, user_id, title, url")
-          .single();
+      const {
+        data,
+        error: insertError,
+      } = await supabase
+        .from("Links")
+        .insert({
+          user_id: userId,
+          title,
+          url: finalUrl,
+        })
+        .select(
+          "id, user_id, title, url"
+        )
+        .single();
 
       if (insertError) {
-        console.error(insertError);
+        console.error(
+          insertError
+        );
+
         setError(
           insertError.message ||
             "Unable to add link."
@@ -507,10 +771,15 @@ export default function ProfilePage() {
       setLinkTitle("");
       setLinkUrl("");
 
-      setMessage("Link added successfully.");
+      setMessage(
+        "Link added successfully."
+      );
     } catch (err) {
       console.error(err);
-      setError("Unable to add link.");
+
+      setError(
+        "Unable to add link."
+      );
     } finally {
       setAddingLink(false);
     }
@@ -538,38 +807,49 @@ export default function ProfilePage() {
     }
 
     try {
-      const { error: deleteError } =
-        await supabase
-          .from("Links")
-          .delete()
-          .eq("id", linkId)
-          .eq("user_id", userId);
+      const {
+        error: deleteError,
+      } = await supabase
+        .from("Links")
+        .delete()
+        .eq("id", linkId)
+        .eq("user_id", userId);
 
       if (deleteError) {
-        console.error(deleteError);
+        console.error(
+          deleteError
+        );
+
         setError(
           deleteError.message ||
             "Unable to delete link."
         );
+
         return;
       }
 
       setLinks((current) =>
         current.filter(
-          (link) => link.id !== linkId
+          (link) =>
+            link.id !== linkId
         )
       );
 
-      setMessage("Link deleted.");
+      setMessage(
+        "Link deleted."
+      );
     } catch (err) {
       console.error(err);
-      setError("Unable to delete link.");
+
+      setError(
+        "Unable to delete link."
+      );
     }
   };
 
   /*
   |--------------------------------------------------------------------------
-  | COPY PROFILE LINK
+  | PUBLIC PROFILE URL
   |--------------------------------------------------------------------------
   */
 
@@ -578,7 +858,10 @@ export default function ProfilePage() {
       return "";
     }
 
-    if (typeof window === "undefined") {
+    if (
+      typeof window ===
+      "undefined"
+    ) {
       return "";
     }
 
@@ -587,43 +870,54 @@ export default function ProfilePage() {
     )}`;
   };
 
-  const handleCopyProfileLink = async () => {
-    const publicUrl =
-      getPublicProfileUrl();
-
-    if (!publicUrl) {
-      setError(
-        "Please save your username first."
-      );
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(
-        publicUrl
-      );
-
-      setMessage(
-        "Profile link copied successfully!"
-      );
-    } catch (err) {
-      console.error(err);
-      setError(
-        "Unable to copy profile link."
-      );
-    }
-  };
-
   /*
   |--------------------------------------------------------------------------
-  | SIGN OUT
+  | COPY PROFILE LINK
   |--------------------------------------------------------------------------
   */
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/");
-  };
+  const handleCopyProfileLink =
+    async () => {
+      const publicUrl =
+        getPublicProfileUrl();
+
+      if (!publicUrl) {
+        setError(
+          "Please save your username first."
+        );
+
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(
+          publicUrl
+        );
+
+        setMessage(
+          "Profile link copied successfully!"
+        );
+      } catch (err) {
+        console.error(err);
+
+        setError(
+          "Unable to copy profile link."
+        );
+      }
+    };
+
+  /*
+  |--------------------------------------------------------------------------
+  | LOGOUT
+  |--------------------------------------------------------------------------
+  */
+
+  const handleLogout =
+    async () => {
+      await supabase.auth.signOut();
+
+      router.push("/");
+    };
 
   /*
   |--------------------------------------------------------------------------
@@ -653,7 +947,9 @@ export default function ProfilePage() {
 
   const publicProfileUrl =
     username
-      ? `/${normalizeUsername(username)}`
+      ? `/${normalizeUsername(
+          username
+        )}`
       : "";
 
   /*
@@ -664,10 +960,13 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-slate-50">
+
       {/* HEADER */}
 
       <header className="bg-white border-b border-slate-200">
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+
           <Link
             href="/"
             className="flex items-center gap-3"
@@ -682,6 +981,7 @@ export default function ProfilePage() {
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-3">
+
             <Link
               href="/dashboard"
               className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -695,15 +995,19 @@ export default function ProfilePage() {
             >
               Logout
             </button>
+
           </div>
+
         </div>
+
       </header>
+
 
       {/* CONTENT */}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
 
-        {/* MESSAGES */}
+        {/* SUCCESS MESSAGE */}
 
         {message && (
           <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-5 py-4 text-sm text-green-700">
@@ -711,26 +1015,33 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* ERROR MESSAGE */}
+
         {error && (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        {/* TOP NAV */}
+        {/* BACK */}
 
         <div className="mb-6 flex flex-wrap items-center gap-3">
+
           <Link
             href="/dashboard"
             className="text-sm font-medium text-slate-500 hover:text-slate-900"
           >
             ← Back to Dashboard
           </Link>
+
         </div>
+
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-          {/* LEFT */}
+          {/* =====================================================
+              LEFT SIDE
+          ===================================================== */}
 
           <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
 
@@ -742,50 +1053,87 @@ export default function ProfilePage() {
               Edit the information visitors will see on your public profile.
             </p>
 
-            {/* AVATAR */}
 
-            <div className="mt-8 flex items-center gap-5">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-slate-900 text-white flex items-center justify-center text-3xl font-bold">
-                  {(
-                    displayName ||
-                    username ||
-                    "U"
-                  )
-                    .charAt(0)
-                    .toUpperCase()}
-                </div>
-              )}
+            {/* =================================================
+                PROFILE PHOTO
+            ================================================= */}
 
-              <div>
-                <label className="inline-block cursor-pointer px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                  Change Photo
+            <div className="mt-8">
 
-                  <input
-                    type="text"
-                    value={avatarUrl}
-                    onChange={(e) =>
-                      setAvatarUrl(e.target.value)
-                    }
-                    className="hidden"
+              <label className="block text-sm font-medium text-slate-700 mb-3">
+                Profile Photo
+              </label>
+
+              <div className="flex items-center gap-5">
+
+                {/* CURRENT PHOTO */}
+
+                {avatarUrl ? (
+
+                  <img
+                    src={avatarUrl}
+                    alt="Profile"
+                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
                   />
-                </label>
 
-                <p className="mt-2 text-xs text-slate-400">
-                  Enter an image URL below.
-                </p>
+                ) : (
+
+                  <div className="w-24 h-24 rounded-full bg-slate-900 text-white flex items-center justify-center text-3xl font-bold">
+                    {(
+                      displayName ||
+                      username ||
+                      "U"
+                    )
+                      .charAt(0)
+                      .toUpperCase()}
+                  </div>
+
+                )}
+
+
+                {/* UPLOAD */}
+
+                <div>
+
+                  <label
+                    htmlFor="profile-photo-upload"
+                    className={`inline-flex items-center justify-center px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 cursor-pointer transition ${
+                      uploading
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    }`}
+                  >
+                    {uploading
+                      ? "Uploading..."
+                      : "Upload Photo"}
+
+                    <input
+                      id="profile-photo-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={uploadAvatar}
+                      disabled={uploading}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <p className="mt-2 text-xs text-slate-400">
+                    JPG, PNG or WebP. Maximum 5MB.
+                  </p>
+
+                </div>
+
               </div>
+
             </div>
 
-            {/* AVATAR URL */}
+
+            {/* =================================================
+                PROFILE PHOTO URL
+            ================================================= */}
 
             <div className="mt-6">
+
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Profile Photo URL
               </label>
@@ -794,21 +1142,33 @@ export default function ProfilePage() {
                 type="url"
                 value={avatarUrl}
                 onChange={(e) =>
-                  setAvatarUrl(e.target.value)
+                  setAvatarUrl(
+                    e.target.value
+                  )
                 }
                 placeholder="https://example.com/photo.jpg"
                 className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
               />
+
+              <p className="mt-2 text-xs text-slate-400">
+                You can upload a photo above or paste an image URL here.
+              </p>
+
             </div>
 
-            {/* USERNAME */}
+
+            {/* =================================================
+                USERNAME
+            ================================================= */}
 
             <div className="mt-6">
+
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Username
               </label>
 
               <div className="flex rounded-xl border border-slate-200 overflow-hidden focus-within:ring-2 focus-within:ring-slate-100 focus-within:border-slate-400">
+
                 <div className="px-4 py-3 bg-slate-50 text-slate-400">
                   /
                 </div>
@@ -826,25 +1186,38 @@ export default function ProfilePage() {
                   placeholder="yourname"
                   className="flex-1 px-4 py-3 outline-none"
                 />
+
               </div>
 
               <p className="mt-2 text-xs text-slate-400">
-                3–30 characters. Letters, numbers,
-                hyphens and underscores only.
+                3–30 characters. Letters, numbers, hyphens and underscores only.
               </p>
 
               <p className="mt-1 text-xs text-slate-400">
+
                 Your public profile will be available at:
+
                 {" "}
+
                 <span className="font-medium text-slate-500">
-                  /{normalizeUsername(username) || "username"}
+                  /
+                  {normalizeUsername(
+                    username
+                  ) ||
+                    "username"}
                 </span>
+
               </p>
+
             </div>
 
-            {/* DISPLAY NAME */}
+
+            {/* =================================================
+                DISPLAY NAME
+            ================================================= */}
 
             <div className="mt-6">
+
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Display Name
               </label>
@@ -853,16 +1226,23 @@ export default function ProfilePage() {
                 type="text"
                 value={displayName}
                 onChange={(e) =>
-                  setDisplayName(e.target.value)
+                  setDisplayName(
+                    e.target.value
+                  )
                 }
                 placeholder="Your name"
                 className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
               />
+
             </div>
 
-            {/* BIO */}
+
+            {/* =================================================
+                BIO
+            ================================================= */}
 
             <div className="mt-6">
+
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Bio
               </label>
@@ -870,18 +1250,26 @@ export default function ProfilePage() {
               <textarea
                 value={bio}
                 onChange={(e) =>
-                  setBio(e.target.value)
+                  setBio(
+                    e.target.value
+                  )
                 }
                 placeholder="Tell people about yourself..."
                 rows={5}
                 className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none resize-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
               />
+
             </div>
 
-            {/* SAVE */}
+
+            {/* =================================================
+                SAVE
+            ================================================= */}
 
             <button
-              onClick={handleSaveProfile}
+              onClick={
+                handleSaveProfile
+              }
               disabled={saving}
               className="mt-6 w-full rounded-xl bg-slate-900 px-5 py-3.5 text-white font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -889,13 +1277,20 @@ export default function ProfilePage() {
                 ? "Saving..."
                 : "Save Profile"}
             </button>
+
           </section>
 
-          {/* RIGHT */}
+
+          {/* =====================================================
+              RIGHT SIDE
+          ===================================================== */}
 
           <section className="space-y-8">
 
-            {/* PUBLIC PROFILE */}
+
+            {/* =================================================
+                PUBLIC PROFILE
+            ================================================= */}
 
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
 
@@ -907,17 +1302,21 @@ export default function ProfilePage() {
                 This is how your profile will appear to visitors.
               </p>
 
+
               {/* PREVIEW */}
 
               <div className="mt-6 rounded-2xl bg-slate-50 p-6 text-center">
 
                 {avatarUrl ? (
+
                   <img
                     src={avatarUrl}
                     alt="Preview"
                     className="w-24 h-24 mx-auto rounded-full object-cover shadow-sm"
                   />
+
                 ) : (
+
                   <div className="w-24 h-24 mx-auto rounded-full bg-slate-900 text-white flex items-center justify-center text-3xl font-bold">
                     {(
                       displayName ||
@@ -927,6 +1326,7 @@ export default function ProfilePage() {
                       .charAt(0)
                       .toUpperCase()}
                   </div>
+
                 )}
 
                 <h3 className="mt-4 text-xl font-bold text-slate-900">
@@ -937,7 +1337,9 @@ export default function ProfilePage() {
 
                 <p className="text-sm text-slate-500">
                   @
-                  {normalizeUsername(username) ||
+                  {normalizeUsername(
+                    username
+                  ) ||
                     "username"}
                 </p>
 
@@ -946,7 +1348,9 @@ export default function ProfilePage() {
                     {bio}
                   </p>
                 )}
+
               </div>
+
 
               {/* BUTTONS */}
 
@@ -954,7 +1358,8 @@ export default function ProfilePage() {
 
                 <Link
                   href={
-                    publicProfileUrl || "/"
+                    publicProfileUrl ||
+                    "/"
                   }
                   target={
                     username
@@ -970,8 +1375,11 @@ export default function ProfilePage() {
                   View Public Profile
                 </Link>
 
+
                 <button
-                  onClick={handleCopyProfileLink}
+                  onClick={
+                    handleCopyProfileLink
+                  }
                   className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
                 >
                   Copy Profile Link
@@ -979,8 +1387,13 @@ export default function ProfilePage() {
 
               </div>
 
+
+              {/* PUBLIC URL */}
+
               {username && (
+
                 <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 text-sm text-slate-500 break-all">
+
                   {typeof window !==
                   "undefined"
                     ? `${window.location.origin}/${normalizeUsername(
@@ -989,11 +1402,17 @@ export default function ProfilePage() {
                     : `/${normalizeUsername(
                         username
                       )}`}
+
                 </div>
+
               )}
+
             </div>
 
-            {/* LINKS */}
+
+            {/* =================================================
+                LINKS
+            ================================================= */}
 
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8">
 
@@ -1005,54 +1424,72 @@ export default function ProfilePage() {
                 Add websites and social media links to your public profile.
               </p>
 
+
               {/* EXISTING LINKS */}
 
               <div className="mt-6 space-y-3">
 
                 {links.length === 0 ? (
+
                   <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">
                     No links added yet.
                   </div>
-                ) : (
-                  links.map((link) => (
-                    <div
-                      key={link.id}
-                      className="flex items-center gap-3 rounded-xl border border-slate-200 p-4"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-slate-800 truncate">
-                          {link.title}
-                        </p>
 
-                        <p className="text-xs text-slate-400 truncate mt-1">
-                          {link.url}
-                        </p>
+                ) : (
+
+                  links.map(
+                    (link) => (
+
+                      <div
+                        key={link.id}
+                        className="flex items-center gap-3 rounded-xl border border-slate-200 p-4"
+                      >
+
+                        <div className="flex-1 min-w-0">
+
+                          <p className="font-semibold text-slate-800 truncate">
+                            {link.title}
+                          </p>
+
+                          <p className="text-xs text-slate-400 truncate mt-1">
+                            {link.url}
+                          </p>
+
+                        </div>
+
+
+                        <a
+                          href={
+                            link.url
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                        >
+                          View
+                        </a>
+
+
+                        <button
+                          onClick={() =>
+                            handleDeleteLink(
+                              link.id
+                            )
+                          }
+                          className="px-3 py-2 rounded-lg border border-red-100 text-xs font-medium text-red-500 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+
                       </div>
 
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                      >
-                        View
-                      </a>
+                    )
+                  )
 
-                      <button
-                        onClick={() =>
-                          handleDeleteLink(
-                            link.id
-                          )
-                        }
-                        className="px-3 py-2 rounded-lg border border-red-100 text-xs font-medium text-red-500 hover:bg-red-50"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ))
                 )}
 
               </div>
+
 
               {/* ADD LINK */}
 
@@ -1066,7 +1503,9 @@ export default function ProfilePage() {
 
                   <input
                     type="text"
-                    value={linkTitle}
+                    value={
+                      linkTitle
+                    }
                     onChange={(e) =>
                       setLinkTitle(
                         e.target.value
@@ -1078,7 +1517,9 @@ export default function ProfilePage() {
 
                   <input
                     type="url"
-                    value={linkUrl}
+                    value={
+                      linkUrl
+                    }
                     onChange={(e) =>
                       setLinkUrl(
                         e.target.value
@@ -1089,8 +1530,12 @@ export default function ProfilePage() {
                   />
 
                   <button
-                    onClick={handleAddLink}
-                    disabled={addingLink}
+                    onClick={
+                      handleAddLink
+                    }
+                    disabled={
+                      addingLink
+                    }
                     className="w-full rounded-xl bg-slate-900 px-5 py-3 text-white font-semibold hover:bg-slate-800 disabled:opacity-50"
                   >
                     {addingLink
@@ -1099,12 +1544,17 @@ export default function ProfilePage() {
                   </button>
 
                 </div>
+
               </div>
 
             </div>
+
           </section>
+
         </div>
+
       </div>
+
     </main>
   );
 }
