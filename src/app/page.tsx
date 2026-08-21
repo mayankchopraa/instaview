@@ -144,7 +144,7 @@ export default function Home() {
                 {/* Login */}
                 <Link
                   href="/login"
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:border-[#6C5CE7] hover:text-[#6C5CE7]"
                 >
                   Login
                 </Link>
