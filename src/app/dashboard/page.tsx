@@ -459,7 +459,7 @@ export default function DashboardPage() {
               <Link
                 href={`/${profile.username}`}
                 target="_blank"
-                className="mx-auto block w-full rounded-lg bg-[#6C5CE7] px-4 py-2 text-center text-sm font-medium text-white hover:bg-[#5848D6] transition-colors"
+                className="w-full rounded-lg bg-[#6C5CE7] px-4 py-2 text-center text-sm font-medium text-white hover:bg-[#5848D6] transition-colors"
               >
                 View Profile
               </Link>
