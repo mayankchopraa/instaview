@@ -313,9 +313,9 @@ export default function LoginPage() {
           <div className="flex justify-center">
 
             <img
-  src="/logo-full.png"
+  src="/logo-icon.png"
   alt="InstaView"
-  className="h-auto w-[180px] object-contain sm:w-[210px]"
+  className="h-auto w-[90px] object-contain sm:w-[90px]"
 />
 
           </div>
