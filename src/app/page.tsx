@@ -84,15 +84,17 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-white text-slate-900">
+
       {/* Navigation */}
       <nav className="border-b border-slate-100 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+
           {/* Full InstaView Logo */}
           <Link href="/" className="flex items-center">
             <img
               src="/logo-full.png"
               alt="InstaView"
-              className="h-12 w-auto object-contain"
+              className="h-auto w-[150px] object-contain sm:w-[180px]"
             />
           </Link>
 
@@ -163,14 +165,8 @@ export default function Home() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="mx-auto max-w-6xl px-6 pb-20 pt-20 text-center sm:pt-28">
-          {/* Hero Logo */}
-          <div className="mb-8 flex justify-center">
-            <img
-              src="/logo-full.png"
-              alt="InstaView"
-              className="h-auto w-[260px] object-contain sm:w-[320px]"
-            />
-          </div>
+
+          {/* Hero Logo REMOVED */}
 
           <div className="mx-auto mb-6 inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600">
             Understand your social audience
@@ -303,6 +299,7 @@ export default function Home() {
       <section id="how-it-works" className="bg-white">
         <div className="mx-auto max-w-6xl px-6 py-20">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+
             <div>
               <p className="text-sm font-semibold uppercase tracking-wider text-slate-400">
                 How it works
@@ -405,6 +402,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
           </div>
         </div>
       </section>
