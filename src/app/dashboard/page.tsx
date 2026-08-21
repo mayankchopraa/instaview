@@ -446,6 +446,7 @@ export default function DashboardPage() {
       />
     </a>
           </div>
+          {/* Navigation Buttons */}
            <div className="flex items-center gap-3">
                   {profile?.username && (
                 <Link
