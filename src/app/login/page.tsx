@@ -485,7 +485,7 @@ export default function LoginPage() {
                 loading ||
                 oauthLoading !== null
               }
-              className="w-full h-12 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition disabled:opacity-50"
+              className="rounded-lg bg-[#6C5CE7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#5848D6] transition-colors"
             >
               {loading
                 ? "Logging in..."
