@@ -234,9 +234,11 @@ export default function SignupPage() {
           {/* LOGO */}
           <div className="flex justify-center">
 
-            <div className="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-xl font-bold">
-              IV
-            </div>
+            <img
+  src="/logo-icon.png"
+  alt="InstaView"
+  className="h-auto w-[180px] object-contain sm:w-[210px]"
+/>
 
           </div>
 
