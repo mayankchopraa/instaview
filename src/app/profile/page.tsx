@@ -971,10 +971,6 @@ export default function ProfilePage() {
             href="/"
             className="flex items-center gap-3"
           >
-            <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold">
-              IV
-            </div>
-
             <a href="/dashboard" className="flex items-center">
   <img
     src="/logo-full.png"
