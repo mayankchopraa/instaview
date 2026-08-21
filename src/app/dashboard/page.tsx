@@ -435,44 +435,52 @@ export default function DashboardPage() {
 
       {/* HEADER */}
       <header className="border-b border-[#E5E7EB] bg-white">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
+  <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
 
-            {/* Logo */}
-    <a href="/dashboard" className="flex items-center">
+    {/* InstaView Logo */}
+    <a
+      href="/dashboard"
+      className="flex items-center"
+    >
       <img
         src="/logo-full.png"
         alt="InstaView"
         className="h-auto w-[180px] object-contain"
       />
     </a>
-          </div>
-          {/* Navigation Buttons */}
-           <div className="flex items-center gap-3">
-                  {profile?.username && (
-                <Link
-                  href={`/${profile.username}`}
-                  target="_blank"
-                   className="inline-flex h-11 items-center justify-center rounded-lg bg-[#635BFF] px-6 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#5148E5]"
-                >
-                  View Profile
-                </Link>
-              )}
 
-  <a
+    {/* Dashboard Navigation */}
+    <div className="flex items-center gap-3">
+
+      {/* View Live Profile */}
+      <a
+        href={`/${profile?.username}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg bg-[#635BFF] px-6 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[#5148E5] hover:shadow-md"
+      >
+        View Profile
+      </a>
+
+      {/* Edit Profile */}
+      <a
         href="/profile"
-        className="inline-flex h-11 items-center justify-center rounded-lg border border-[#D9DEEA] bg-white px-6 text-sm font-semibold text-[#18213A] transition-all hover:border-[#635BFF] hover:text-[#635BFF]"
+        className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg border border-[#D9DEEA] bg-white px-6 text-sm font-semibold text-[#18213A] transition-all duration-200 hover:border-[#635BFF] hover:text-[#635BFF]"
       >
         Edit Profile
       </a>
 
+      {/* Logout */}
       <button
         onClick={logout}
-        className="inline-flex h-11 items-center justify-center rounded-lg border border-red-200 bg-white px-6 text-sm font-semibold text-red-600 transition-all hover:bg-red-50"
+        className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg border border-red-200 bg-white px-6 text-sm font-semibold text-red-600 transition-all duration-200 hover:bg-red-50"
       >
         Logout
       </button>
-</div>
-      </header>
+
+    </div>
+  </div>
+</header>
 
       {/* MAIN */}
       <div className="max-w-7xl mx-auto px-6 py-8">
