@@ -320,7 +320,11 @@ export default function PublicProfilePage() {
               className="flex items-center gap-2 font-semibold text-slate-900 hover:text-slate-700 transition"
             >
               <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-sm font-bold">
-                IV
+                <img
+  src="/logo-full.png"
+  alt="InstaView"
+  className="h-auto w-[180px] object-contain sm:w-[210px]"
+/>
               </div>
 
               <span>InstaView</span>
