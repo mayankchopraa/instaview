@@ -451,10 +451,6 @@ export default function DashboardPage() {
 />
             </Link>
 
-            <p className="text-sm text-slate-500 mt-1">
-              {userEmail}
-            </p>
-
           </div>
 
           <div className="flex gap-3 flex-wrap">
