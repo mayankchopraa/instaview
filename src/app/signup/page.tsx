@@ -451,7 +451,7 @@ export default function SignupPage() {
                 loading ||
                 oauthLoading !== null
               }
-              className="w-full h-12 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition disabled:opacity-50"
+              className="mx-auto block w-full rounded-lg bg-[#6C5CE7] px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#5848D6] transition-colors"
             >
               {loading
                 ? "Creating account..."
