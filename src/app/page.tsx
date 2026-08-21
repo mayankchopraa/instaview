@@ -222,7 +222,7 @@ export default function Home() {
   {/* Primary Button */}
   <a
     href="/signup"
-    className="flex h-14 w-full max-w-[320px] items-center justify-center rounded-xl bg-[#6C5CE7] px-8 text-base font-semibold text-white shadow-md transition-all duration-200 hover:bg-[#5848D6] hover:shadow-lg"
+    className="flex h-14 w-full max-w-[420px] items-center justify-center rounded-xl bg-[#6C5CE7] px-8 text-base font-semibold text-white shadow-md transition-all duration-200 hover:bg-[#5848D6] hover:shadow-lg"
   >
     Create Your Free Profile
   </a>
