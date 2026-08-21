@@ -454,25 +454,25 @@ export default function DashboardPage() {
                 <Link
                   href={`/${profile.username}`}
                   target="_blank"
-                   className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
+                   className="inline-flex h-11 items-center justify-center rounded-lg bg-[#635BFF] px-6 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#5148E5]"
                 >
                   View Profile
                 </Link>
               )}
 
   <a
-    href="/profile"
-    className="rounded-lg border border-[#D9DEEA] bg-white px-6 py-3 text-sm font-semibold text-[#18213A] transition-colors hover:border-[#635BFF] hover:text-[#635BFF]"
-  >
-    Edit Profile
-  </a>
+        href="/profile"
+        className="inline-flex h-11 items-center justify-center rounded-lg border border-[#D9DEEA] bg-white px-6 text-sm font-semibold text-[#18213A] transition-all hover:border-[#635BFF] hover:text-[#635BFF]"
+      >
+        Edit Profile
+      </a>
 
-  <button
-    onClick={logout}
-    className="rounded-lg border border-red-200 bg-white px-6 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
-  >
-    Logout
-  </button>
+      <button
+        onClick={logout}
+        className="inline-flex h-11 items-center justify-center rounded-lg border border-red-200 bg-white px-6 text-sm font-semibold text-red-600 transition-all hover:bg-red-50"
+      >
+        Logout
+      </button>
 
       </header>
 
