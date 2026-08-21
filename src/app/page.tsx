@@ -212,7 +212,7 @@ export default function Home() {
                 {/* Edit Profile */}
                 <Link
                   href="/profile"
-                  className="rounded-xl border border-slate-200 px-8 py-4 font-semibold text-slate-700 hover:bg-slate-50"
+                  className="rounded-xl border border-slate-200 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Edit Profile
                 </Link>
