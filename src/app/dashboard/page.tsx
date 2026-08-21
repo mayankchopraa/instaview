@@ -434,47 +434,45 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-slate-50">
 
       {/* HEADER */}
-      <header className="bg-white border-b border-slate-200">
+      <header className="border-b border-[#E5E7EB] bg-white">
+  <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-6 lg:px-8">
 
-        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between gap-4">
+    {/* Logo */}
+    <a href="/dashboard" className="flex items-center">
+      <img
+        src="/logo-full.png"
+        alt="InstaView"
+        className="h-auto w-[180px] object-contain"
+      />
+    </a>
 
-            <Link
-              href="/"
-              className="text-2xl font-bold text-slate-900"
-            >
-              <img
-  src="/logo-full.png"
-  alt="InstaView"
-  className="h-auto w-[170px] object-contain sm:w-[198px]"
-/>
-            </Link>
+    {/* Navigation Buttons */}
+    <div className="flex items-center gap-3">
 
-          </div>
-                  {profile?.username && (
-                <Link
-                  href={`/${profile.username}`}
-                  target="_blank"
-                   className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
-                >
-                  View Profile
-                </Link>
-              )}
+      <a
+        href="/profile"
+        className="inline-flex h-11 items-center justify-center rounded-lg bg-[#635BFF] px-6 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#5148E5]"
+      >
+        View Profile
+      </a>
 
-  <a
-    href="/profile"
-    className="rounded-lg border border-[#D9DEEA] bg-white px-6 py-3 text-sm font-semibold text-[#18213A] transition-colors hover:border-[#635BFF] hover:text-[#635BFF]"
-  >
-    Edit Profile
-  </a>
+      <a
+        href="/profile"
+        className="inline-flex h-11 items-center justify-center rounded-lg border border-[#D9DEEA] bg-white px-6 text-sm font-semibold text-[#18213A] transition-all hover:border-[#635BFF] hover:text-[#635BFF]"
+      >
+        Edit Profile
+      </a>
 
-  <button
-    onClick={logout}
-    className="rounded-lg border border-red-200 bg-white px-6 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
-  >
-    Logout
-  </button>
+      <button
+        onClick={logout}
+        className="inline-flex h-11 items-center justify-center rounded-lg border border-red-200 bg-white px-6 text-sm font-semibold text-red-600 transition-all hover:bg-red-50"
+      >
+        Logout
+      </button>
 
-      </header>
+    </div>
+  </div>
+</header>
 
       {/* MAIN */}
       <div className="max-w-7xl mx-auto px-6 py-8">
