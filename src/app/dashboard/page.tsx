@@ -453,33 +453,28 @@ export default function DashboardPage() {
 
           </div>
 
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex items-center justify-end gap-3">
+  <a
+    href="/profile"
+    className="rounded-lg bg-[#635BFF] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#5148E5]"
+  >
+    View Profile
+  </a>
 
-            {profile?.username && (
-              <Link
-                href={`/${profile.username}`}
-                target="_blank"
-                className="w-full rounded-lg bg-[#6C5CE7] px-4 py-2 text-center text-sm font-medium text-white hover:bg-[#5848D6] transition-colors"
-              >
-                View Profile
-              </Link>
-            )}
+  <a
+    href="/profile"
+    className="rounded-lg border border-[#D9DEEA] bg-white px-6 py-3 text-sm font-semibold text-[#18213A] transition-colors hover:border-[#635BFF] hover:text-[#635BFF]"
+  >
+    Edit Profile
+  </a>
 
-            <Link
-              href="/profile"
-              className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50"
-            >
-              Edit Profile
-            </Link>
-
-            <button
-              onClick={logout}
-              className="px-4 py-2 rounded-lg border border-red-200 bg-white text-red-600 text-sm font-medium hover:bg-red-50"
-            >
-              Logout
-            </button>
-
-          </div>
+  <button
+    onClick={logout}
+    className="rounded-lg border border-red-200 bg-white px-6 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+  >
+    Logout
+  </button>
+</div>
 
         </div>
 
