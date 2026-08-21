@@ -218,21 +218,23 @@ export default function Home() {
                 </Link>
               </>
             ) : (
-              <>
-                <Link
-                  href="/signup"
-                  className="flex h-14 w-full max-w-[320px] items-center justify-center rounded-xl bg-[#6C5CE7] px-8 text-base font-semibold text-white shadow-md transition-all duration-200 hover:bg-[#5848D6] hover:shadow-lg"
-                >
-                  Create Your Free Profile
-                </Link>
+              <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+  {/* Primary Button */}
+  <a
+    href="/signup"
+    className="flex h-14 w-full max-w-[320px] items-center justify-center rounded-xl bg-[#6C5CE7] px-8 text-base font-semibold text-white shadow-md transition-all duration-200 hover:bg-[#5848D6] hover:shadow-lg"
+  >
+    Create Your Free Profile
+  </a>
 
-                <a
-                  href="#how-it-works"
-                  className="rounded-xl border border-slate-200 px-7 py-3.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  See How It Works
-                </a>
-              </>
+  {/* Secondary Button */}
+  <a
+    href="#how-it-works"
+    className="flex h-14 w-full max-w-[220px] items-center justify-center rounded-xl border border-[#D9DEEA] bg-white px-8 text-base font-semibold text-[#18213A] transition-all duration-200 hover:border-[#6C5CE7] hover:text-[#6C5CE7]"
+  >
+    See How It Works
+  </a>
+</div>
             )}
           </div>
 
