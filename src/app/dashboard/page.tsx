@@ -434,9 +434,8 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-slate-50">
 
       {/* HEADER */}
-      <header className="bg-white border-b border-slate-200">
-
-        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between gap-4">
+      <header className="border-b border-[#E5E7EB] bg-white">
+        <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-6 lg:px-8">
 
             <Link
               href="/"
@@ -450,6 +449,7 @@ export default function DashboardPage() {
             </Link>
 
           </div>
+           <div className="flex items-center gap-3">
                   {profile?.username && (
                 <Link
                   href={`/${profile.username}`}
@@ -473,7 +473,7 @@ export default function DashboardPage() {
       >
         Logout
       </button>
-
+</div>
       </header>
 
       {/* MAIN */}
