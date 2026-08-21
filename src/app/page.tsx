@@ -144,7 +144,7 @@ export default function Home() {
                 {/* Login */}
                 <Link
                   href="/login"
-                  className="flex h-14 w-full max-w-[220px] items-center justify-center rounded-xl border border-[#D9DEEA] bg-white px-8 text-base font-semibold text-[#18213A] transition-all duration-200 hover:border-[#6C5CE7] hover:text-[#6C5CE7]"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
                 >
                   Login
                 </Link>
@@ -152,7 +152,7 @@ export default function Home() {
                 {/* Get Started */}
                 <Link
                   href="/signup"
-                  className="flex h-14 w-full max-w-[320px] items-center justify-center rounded-xl bg-[#6C5CE7] px-8 text-base font-semibold text-white shadow-md transition-all duration-200 hover:bg-[#5848D6] hover:shadow-lg"
+                  className="mx-auto block w-full rounded-lg bg-[#6C5CE7] px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#5848D6] transition-colors"
                 >
                   Get Started
                 </Link>
