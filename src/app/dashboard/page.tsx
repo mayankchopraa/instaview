@@ -435,7 +435,7 @@ export default function DashboardPage() {
 
       {/* HEADER */}
       <header className="border-b border-[#E5E7EB] bg-white">
-        <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-6 lg:px-8">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
 
             {/* Logo */}
     <a href="/dashboard" className="flex items-center">
