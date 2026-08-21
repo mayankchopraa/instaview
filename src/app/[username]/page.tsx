@@ -322,7 +322,7 @@ export default function PublicProfilePage() {
                 <img
   src="/logo-full.png"
   alt="InstaView"
-  className="h-auto w-[180px] object-contain sm:w-[210px]"
+  className="h-auto w-[165px] object-contain sm:w-[193px]"
 />
             </Link>
 
