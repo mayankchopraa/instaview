@@ -438,8 +438,6 @@ export default function DashboardPage() {
 
         <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between gap-4">
 
-          <div>
-
             <Link
               href="/"
               className="text-2xl font-bold text-slate-900"
@@ -452,14 +450,15 @@ export default function DashboardPage() {
             </Link>
 
           </div>
-
-          <div className="flex items-center justify-end gap-3">
-  <a
-    href="/profile"
-    className="rounded-lg bg-[#635BFF] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#5148E5]"
-  >
-    View Profile
-  </a>
+                  {profile?.username && (
+                <Link
+                  href={`/${profile.username}`}
+                  target="_blank"
+                   className="rounded-lg bg-[#635BFF] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#5148E5]"
+                >
+                  View Profile
+                </Link>
+              )}
 
   <a
     href="/profile"
@@ -474,9 +473,6 @@ export default function DashboardPage() {
   >
     Logout
   </button>
-</div>
-
-        </div>
 
       </header>
 
