@@ -975,9 +975,13 @@ export default function ProfilePage() {
               IV
             </div>
 
-            <span className="text-xl font-bold text-slate-900">
-              InstaView
-            </span>
+            <a href="/dashboard" className="flex items-center">
+  <img
+    src="/logo-full.png"
+    alt="InstaView"
+    className="h-auto w-[110px] object-contain sm:w-[125px]"
+  />
+</a>
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-3">
