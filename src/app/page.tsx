@@ -152,7 +152,7 @@ export default function Home() {
                 {/* Get Started */}
                 <Link
                   href="/signup"
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                  className="mx-auto block w-full rounded-lg bg-[#6C5CE7] px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#5848D6] transition-colors"
                 >
                   Get Started
                 </Link>
