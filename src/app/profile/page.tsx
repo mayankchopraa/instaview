@@ -975,7 +975,7 @@ export default function ProfilePage() {
   <img
     src="/logo-full.png"
     alt="InstaView"
-    className="h-auto w-[110px] object-contain sm:w-[125px]"
+    className="h-auto w-[125px] object-contain sm:w-[140px]"
   />
 </a>
           </Link>
