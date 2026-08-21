@@ -152,7 +152,7 @@ export default function Home() {
                 {/* Get Started */}
                 <Link
                   href="/signup"
-                  className="mx-auto block w-full rounded-lg bg-[#6C5CE7] px-4 py-3 text-center text-sm font-semibold text-white hover:bg-[#5848D6] transition-colors"
+                  className="flex h-14 w-full max-w-[320px] items-center justify-center rounded-xl bg-[#6C5CE7] px-8 text-base font-semibold text-white shadow-md transition-all duration-200 hover:bg-[#5848D6] hover:shadow-lg"
                 >
                   Get Started
                 </Link>
