@@ -221,7 +221,7 @@ export default function Home() {
               <>
                 <Link
                   href="/signup"
-                  className="rounded-xl bg-slate-900 px-8 py-4 font-semibold text-white hover:bg-slate-800"
+                  className="mx-auto block w-full max-w-md rounded-lg bg-[#6C5CE7] px-8 py-4 text-center text-sm font-semibold text-white hover:bg-[#5848D6] transition-colors"
                 >
                   Create Your Free Profile
                 </Link>
