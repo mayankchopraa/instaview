@@ -437,17 +437,14 @@ export default function DashboardPage() {
       <header className="border-b border-[#E5E7EB] bg-white">
         <div className="mx-auto flex h-24 max-w-7xl items-center justify-between px-6 lg:px-8">
 
-            <Link
-              href="/"
-              className="text-2xl font-bold text-slate-900"
-            >
-              <img
-  src="/logo-full.png"
-  alt="InstaView"
-  className="h-auto w-[170px] object-contain sm:w-[198px]"
-/>
-            </Link>
-
+            {/* Logo */}
+    <a href="/dashboard" className="flex items-center">
+      <img
+        src="/logo-full.png"
+        alt="InstaView"
+        className="h-auto w-[180px] object-contain"
+      />
+    </a>
           </div>
            <div className="flex items-center gap-3">
                   {profile?.username && (
