@@ -237,7 +237,7 @@ export default function SignupPage() {
             <img
   src="/logo-icon.png"
   alt="InstaView"
-  className="h-auto w-[180px] object-contain sm:w-[210px]"
+  className="h-auto w-[140px] object-contain sm:w-[140px]"
 />
 
           </div>
