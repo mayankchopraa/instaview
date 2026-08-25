@@ -18,6 +18,7 @@ type AnalyticsRow = {
   viewer_id: string | null;
   profile_view: boolean;
   link_id: string | null;
+  share_link_id: string | null;
   interaction_type: string | null;
 };
 
@@ -34,6 +35,13 @@ type ProfileLink = {
   url: string;
 };
 
+type ShareLink = {
+  id: string;
+  title: string;
+  file_name: string;
+  file_url: string;
+};
+
 type OwnProfile = {
   user_id: string;
   username: string | null;
@@ -48,24 +56,24 @@ type ActivityItem = {
   type: "profile" | "link" | "file";
   visitor_id: string | null;
   link_id: string | null;
+  share_link_id: string | null;
 };
 
 export default function DashboardPage() {
-  const [profileViewsData, setProfileViewsData] = useState<
-    ProfileViewRow[]
-  >([]);
+  const [profileViewsData, setProfileViewsData] =
+    useState<ProfileViewRow[]>([]);
 
-  const [analytics, setAnalytics] = useState<
-    AnalyticsRow[]
-  >([]);
+  const [analytics, setAnalytics] =
+    useState<AnalyticsRow[]>([]);
 
-  const [visitors, setVisitors] = useState<
-    Record<string, VisitorProfile>
-  >({});
+  const [visitors, setVisitors] =
+    useState<Record<string, VisitorProfile>>({});
 
-  const [profileLinks, setProfileLinks] = useState<
-    Record<string, ProfileLink>
-  >({});
+  const [profileLinks, setProfileLinks] =
+    useState<Record<string, ProfileLink>>({});
+
+  const [shareLinks, setShareLinks] =
+    useState<Record<string, ShareLink>>({});
 
   const [profile, setProfile] =
     useState<OwnProfile | null>(null);
@@ -89,11 +97,8 @@ export default function DashboardPage() {
       setErrorMessage("");
 
       /*
-       * =====================================================
-       * GET CURRENT USER
-       * =====================================================
+       * CURRENT USER
        */
-
       const {
         data: { user },
         error: userError,
@@ -112,11 +117,8 @@ export default function DashboardPage() {
       }
 
       /*
-       * =====================================================
-       * LOAD OWN PROFILE
-       * =====================================================
+       * OWN PROFILE
        */
-
       const {
         data: ownProfile,
         error: ownProfileError,
@@ -140,14 +142,8 @@ export default function DashboardPage() {
       }
 
       /*
-       * =====================================================
-       * LOAD PROFILE VIEWS
-       *
-       * IMPORTANT:
-       * Profile views come from ProfileViews.
-       * =====================================================
+       * PROFILE VIEWS
        */
-
       const {
         data: profileViews,
         error: profileViewsError,
@@ -156,7 +152,10 @@ export default function DashboardPage() {
         .select(
           "id, profile_user_id, visitor_user_id, viewed_at"
         )
-        .eq("profile_user_id", user.id)
+        .eq(
+          "profile_user_id",
+          user.id
+        )
         .order("viewed_at", {
           ascending: false,
         });
@@ -175,20 +174,17 @@ export default function DashboardPage() {
       }
 
       /*
-       * =====================================================
-       * LOAD ANALYTICS
+       * ANALYTICS
        *
-       * interaction_type is now included.
-       * =====================================================
+       * Includes share_link_id.
        */
-
       const {
         data: analyticsData,
         error: analyticsError,
       } = await supabase
         .from("Analytics")
         .select(
-          "id, created_at, user_id, viewer_id, profile_view, link_id, interaction_type"
+          "id, created_at, user_id, viewer_id, profile_view, link_id, share_link_id, interaction_type"
         )
         .eq("user_id", user.id)
         .order("created_at", {
@@ -209,11 +205,8 @@ export default function DashboardPage() {
       }
 
       /*
-       * =====================================================
-       * COLLECT VISITOR IDS
-       * =====================================================
+       * VISITOR IDS
        */
-
       const profileViewVisitorIds =
         (profileViews || [])
           .filter(
@@ -236,19 +229,17 @@ export default function DashboardPage() {
               item.viewer_id as string
           );
 
-      const visitorIds = Array.from(
-        new Set([
-          ...profileViewVisitorIds,
-          ...analyticsVisitorIds,
-        ])
-      );
+      const visitorIds =
+        Array.from(
+          new Set([
+            ...profileViewVisitorIds,
+            ...analyticsVisitorIds,
+          ])
+        );
 
       /*
-       * =====================================================
-       * LOAD VISITOR PROFILES
-       * =====================================================
+       * VISITOR PROFILES
        */
-
       if (visitorIds.length > 0) {
         const {
           data: visitorData,
@@ -265,7 +256,7 @@ export default function DashboardPage() {
 
         if (visitorError) {
           console.error(
-            "Visitor profile error:",
+            "Visitor error:",
             visitorError
           );
         }
@@ -291,27 +282,28 @@ export default function DashboardPage() {
       }
 
       /*
-       * =====================================================
-       * LOAD LINKS
-       * =====================================================
+       * LINK IDS
        */
+      const linkIds =
+        Array.from(
+          new Set(
+            (analyticsData || [])
+              .filter(
+                (item) =>
+                  item.interaction_type ===
+                    "link_click" &&
+                  item.link_id
+              )
+              .map(
+                (item) =>
+                  item.link_id as string
+              )
+          )
+        );
 
-      const linkIds = Array.from(
-        new Set(
-          (analyticsData || [])
-            .filter(
-              (item) =>
-                item.interaction_type ===
-                  "link_click" &&
-                item.link_id
-            )
-            .map(
-              (item) =>
-                item.link_id as string
-            )
-        )
-      );
-
+      /*
+       * LOAD LINKS
+       */
       if (linkIds.length > 0) {
         const {
           data: linksData,
@@ -341,8 +333,9 @@ export default function DashboardPage() {
 
           linksData.forEach(
             (link) => {
-              linkMap[link.id] =
-                link;
+              linkMap[
+                link.id
+              ] = link;
             }
           );
 
@@ -351,9 +344,78 @@ export default function DashboardPage() {
           );
         }
       }
+
+      /*
+       * SHARE LINK IDS
+       *
+       * These identify exactly which
+       * brochure/file was clicked.
+       */
+      const shareLinkIds =
+        Array.from(
+          new Set(
+            (analyticsData || [])
+              .filter(
+                (item) =>
+                  item.interaction_type ===
+                    "file_click" &&
+                  item.share_link_id
+              )
+              .map(
+                (item) =>
+                  item.share_link_id as string
+              )
+          )
+        );
+
+      /*
+       * LOAD SHARE LINKS
+       */
+      if (
+        shareLinkIds.length > 0
+      ) {
+        const {
+          data: shareData,
+          error: shareError,
+        } = await supabase
+          .from("ShareLinks")
+          .select(
+            "id, title, file_name, file_url"
+          )
+          .in(
+            "id",
+            shareLinkIds
+          );
+
+        if (shareError) {
+          console.error(
+            "ShareLinks error:",
+            shareError
+          );
+        }
+
+        if (shareData) {
+          const shareMap: Record<
+            string,
+            ShareLink
+          > = {};
+
+          shareData.forEach(
+            (share) => {
+              shareMap[
+                share.id
+              ] = share;
+            }
+          );
+
+          setShareLinks(
+            shareMap
+          );
+        }
+      }
     } catch (error) {
       console.error(
-        "Dashboard loading error:",
+        "Dashboard error:",
         error
       );
 
@@ -366,14 +428,14 @@ export default function DashboardPage() {
   }
 
   /*
-   * =====================================================
-   * PROFILE VIEW STATISTICS
-   * =====================================================
+   * PROFILE VIEWS
    */
-
   const profileViews =
     profileViewsData.length;
 
+  /*
+   * IDENTIFIED VISITORS
+   */
   const identifiedViewerIds =
     Array.from(
       new Set(
@@ -392,6 +454,9 @@ export default function DashboardPage() {
   const identifiedVisitors =
     identifiedViewerIds.length;
 
+  /*
+   * ANONYMOUS VIEWS
+   */
   const anonymousViews =
     profileViewsData.filter(
       (item) =>
@@ -399,11 +464,8 @@ export default function DashboardPage() {
     ).length;
 
   /*
-   * =====================================================
    * RETURNING VISITORS
-   * =====================================================
    */
-
   const viewerVisitCounts: Record<
     string,
     number
@@ -415,15 +477,12 @@ export default function DashboardPage() {
         item.visitor_user_id
     )
     .forEach((item) => {
-      const visitorId =
+      const id =
         item.visitor_user_id as string;
 
-      viewerVisitCounts[
-        visitorId
-      ] =
-        (viewerVisitCounts[
-          visitorId
-        ] || 0) + 1;
+      viewerVisitCounts[id] =
+        (viewerVisitCounts[id] ||
+          0) + 1;
     });
 
   const returningVisitors =
@@ -434,11 +493,8 @@ export default function DashboardPage() {
     ).length;
 
   /*
-   * =====================================================
    * LINK CLICKS
-   * =====================================================
    */
-
   const linkClicks =
     analytics.filter(
       (item) =>
@@ -447,11 +503,8 @@ export default function DashboardPage() {
     ).length;
 
   /*
-   * =====================================================
    * FILE CLICKS
-   * =====================================================
    */
-
   const fileClicks =
     analytics.filter(
       (item) =>
@@ -460,29 +513,15 @@ export default function DashboardPage() {
     ).length;
 
   /*
-   * =====================================================
-   * TOTAL ACTIVITY
-   * =====================================================
+   * TOTAL CLICKS
    */
-
-  const totalInteractions =
-    profileViews +
-    linkClicks +
-    fileClicks;
-
-  /*
-   * =====================================================
-   * CLICK RATE
-   *
-   * Normal links + files
-   * divided by profile views.
-   * =====================================================
-   */
-
   const totalClicks =
     linkClicks +
     fileClicks;
 
+  /*
+   * CLICK RATE
+   */
   const clickRate =
     profileViews > 0
       ? (
@@ -493,11 +532,8 @@ export default function DashboardPage() {
       : "0.0";
 
   /*
-   * =====================================================
    * TOP LINKS
-   * =====================================================
    */
-
   const linkStats =
     analytics
       .filter(
@@ -509,11 +545,11 @@ export default function DashboardPage() {
       .reduce<
         Record<string, number>
       >((acc, item) => {
-        const linkId =
+        const id =
           item.link_id as string;
 
-        acc[linkId] =
-          (acc[linkId] || 0) + 1;
+        acc[id] =
+          (acc[id] || 0) + 1;
 
         return acc;
       }, {});
@@ -529,73 +565,110 @@ export default function DashboardPage() {
       .slice(0, 5);
 
   /*
-   * =====================================================
-   * RECENT ACTIVITY
-   * =====================================================
+   * TOP FILES
+   *
+   * This tells the user exactly
+   * which brochure/file was clicked.
    */
+  const fileStats =
+    analytics
+      .filter(
+        (item) =>
+          item.interaction_type ===
+            "file_click" &&
+          item.share_link_id
+      )
+      .reduce<
+        Record<string, number>
+      >((acc, item) => {
+        const id =
+          item.share_link_id as string;
 
-  const recentActivity =
-    useMemo<ActivityItem[]>(() => {
-      const profileActivities: ActivityItem[] =
-        profileViewsData.map(
-          (item) => ({
-            id: `profile-${item.id}`,
-            date: item.viewed_at,
-            type: "profile",
-            visitor_id:
-              item.visitor_user_id,
-            link_id: null,
-          })
-        );
+        acc[id] =
+          (acc[id] || 0) + 1;
 
-      const interactionActivities: ActivityItem[] =
-        analytics
-          .filter(
-            (item) =>
-              item.interaction_type ===
-                "link_click" ||
-              item.interaction_type ===
-                "file_click"
-          )
-          .map((item) => ({
-            id: `interaction-${item.id}`,
-            date: item.created_at,
-            type:
-              item.interaction_type ===
-              "file_click"
-                ? "file"
-                : "link",
-            visitor_id:
-              item.viewer_id,
-            link_id:
-              item.link_id,
-          }));
+        return acc;
+      }, {});
 
-      return [
-        ...profileActivities,
-        ...interactionActivities,
-      ]
-        .sort(
-          (a, b) =>
-            new Date(
-              b.date
-            ).getTime() -
-            new Date(
-              a.date
-            ).getTime()
-        )
-        .slice(0, 10);
-    }, [
-      profileViewsData,
-      analytics,
-    ]);
+  const topFiles =
+    Object.entries(
+      fileStats
+    )
+      .sort(
+        (a, b) =>
+          b[1] - a[1]
+      )
+      .slice(0, 5);
 
   /*
-   * =====================================================
-   * DATE FORMAT
-   * =====================================================
+   * RECENT ACTIVITY
    */
+  const recentActivity =
+    useMemo<ActivityItem[]>(
+      () => {
+        const profileActivities: ActivityItem[] =
+          profileViewsData.map(
+            (item) => ({
+              id: `profile-${item.id}`,
+              date: item.viewed_at,
+              type: "profile",
+              visitor_id:
+                item.visitor_user_id,
+              link_id: null,
+              share_link_id:
+                null,
+            })
+          );
 
+        const interactionActivities: ActivityItem[] =
+          analytics
+            .filter(
+              (item) =>
+                item.interaction_type ===
+                  "link_click" ||
+                item.interaction_type ===
+                  "file_click"
+            )
+            .map((item) => ({
+              id: `interaction-${item.id}`,
+              date: item.created_at,
+              type:
+                item.interaction_type ===
+                "file_click"
+                  ? "file"
+                  : "link",
+              visitor_id:
+                item.viewer_id,
+              link_id:
+                item.link_id,
+              share_link_id:
+                item.share_link_id,
+            }));
+
+        return [
+          ...profileActivities,
+          ...interactionActivities,
+        ]
+          .sort(
+            (a, b) =>
+              new Date(
+                b.date
+              ).getTime() -
+              new Date(
+                a.date
+              ).getTime()
+          )
+          .slice(0, 15);
+      },
+      [
+        profileViewsData,
+        analytics,
+      ]
+    );
+
+  /*
+   * DATE FORMAT
+   */
   function formatDate(
     date: string
   ) {
@@ -614,11 +687,8 @@ export default function DashboardPage() {
   }
 
   /*
-   * =====================================================
    * COPY PROFILE LINK
-   * =====================================================
    */
-
   async function copyProfileLink() {
     if (
       !profile?.username
@@ -650,11 +720,8 @@ export default function DashboardPage() {
   }
 
   /*
-   * =====================================================
    * LOGOUT
-   * =====================================================
    */
-
   async function logout() {
     await supabase.auth.signOut();
 
@@ -663,14 +730,12 @@ export default function DashboardPage() {
   }
 
   /*
-   * =====================================================
    * LOADING
-   * =====================================================
    */
-
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center">
+
         <div className="text-center">
 
           <div className="w-10 h-10 border-4 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto" />
@@ -680,15 +745,10 @@ export default function DashboardPage() {
           </p>
 
         </div>
+
       </main>
     );
   }
-
-  /*
-   * =====================================================
-   * DASHBOARD
-   * =====================================================
-   */
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -745,7 +805,6 @@ export default function DashboardPage() {
       {/* MAIN */}
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* TITLE */}
         <div className="mb-8">
 
           <h1 className="text-3xl font-bold text-slate-900">
@@ -758,7 +817,6 @@ export default function DashboardPage() {
 
         </div>
 
-        {/* ERROR */}
         {errorMessage && (
           <div className="mb-8 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
             {errorMessage}
@@ -784,7 +842,7 @@ export default function DashboardPage() {
 
                   <div className="mt-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 break-all">
                     {typeof window !==
-                      "undefined"
+                    "undefined"
                       ? `${window.location.origin}/${profile.username}`
                       : `/${profile.username}`}
                   </div>
@@ -832,13 +890,9 @@ export default function DashboardPage() {
 
         </section>
 
-        {/* =====================================================
-            STAT CARDS
-        ===================================================== */}
-
+        {/* STATS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
 
-          {/* PROFILE VIEWS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
 
             <p className="text-sm text-slate-500">
@@ -855,7 +909,6 @@ export default function DashboardPage() {
 
           </div>
 
-          {/* IDENTIFIED VISITORS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
 
             <p className="text-sm text-slate-500">
@@ -872,7 +925,6 @@ export default function DashboardPage() {
 
           </div>
 
-          {/* LINK CLICKS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
 
             <p className="text-sm text-slate-500">
@@ -889,7 +941,6 @@ export default function DashboardPage() {
 
           </div>
 
-          {/* FILE CLICKS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
 
             <p className="text-sm text-slate-500">
@@ -906,7 +957,6 @@ export default function DashboardPage() {
 
           </div>
 
-          {/* RETURNING VISITORS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
 
             <p className="text-sm text-slate-500">
@@ -928,7 +978,6 @@ export default function DashboardPage() {
         {/* SECONDARY STATS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">
 
-          {/* CLICK RATE */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
 
             <p className="text-sm text-slate-500">
@@ -945,29 +994,25 @@ export default function DashboardPage() {
 
           </div>
 
-          {/* TOTAL ACTIVITY */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
 
             <p className="text-sm text-slate-500">
-              Total Activity
+              Anonymous Views
             </p>
 
             <p className="text-3xl font-bold text-slate-900 mt-2">
-              {totalInteractions}
+              {anonymousViews}
             </p>
 
             <p className="text-xs text-slate-400 mt-2">
-              Views + link clicks + file clicks
+              Visitors without an InstaView account
             </p>
 
           </div>
 
         </div>
 
-        {/* =====================================================
-            WHO VIEWED YOUR PROFILE
-        ===================================================== */}
-
+        {/* WHO VIEWED */}
         <section className="mt-8 bg-white rounded-2xl border border-slate-200 shadow-sm">
 
           <div className="p-6 border-b border-slate-200">
@@ -1038,6 +1083,7 @@ export default function DashboardPage() {
                         <div className="min-w-0">
 
                           {visitor ? (
+
                             <>
                               <p className="font-semibold text-slate-900 truncate">
                                 {visitor.display_name ||
@@ -1055,7 +1101,9 @@ export default function DashboardPage() {
                                 Viewed your profile
                               </p>
                             </>
+
                           ) : (
+
                             <>
                               <p className="font-semibold text-slate-900">
                                 Anonymous Visitor
@@ -1065,6 +1113,7 @@ export default function DashboardPage() {
                                 Visitor without an InstaView account
                               </p>
                             </>
+
                           )}
 
                         </div>
@@ -1087,10 +1136,7 @@ export default function DashboardPage() {
 
         </section>
 
-        {/* =====================================================
-            TOP LINKS + FILE CLICKS
-        ===================================================== */}
-
+        {/* TOP LINKS + TOP FILES */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
 
           {/* TOP LINKS */}
@@ -1185,38 +1231,94 @@ export default function DashboardPage() {
 
           </section>
 
-          {/* FILE CLICK SUMMARY */}
+          {/* TOP FILES */}
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
 
             <div className="p-6 border-b border-slate-200">
 
               <h2 className="text-lg font-bold text-slate-900">
-                Brochure & File Activity
+                Top Files
               </h2>
 
               <p className="text-sm text-slate-500 mt-1">
-                See how many times visitors opened your files.
+                See exactly which brochures and files visitors opened.
               </p>
 
             </div>
 
             <div className="p-6">
 
-              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-6">
+              {topFiles.length === 0 ? (
 
-                <p className="text-sm text-slate-500">
-                  Total File Opens
-                </p>
+                <div className="py-10 text-center text-slate-500">
+                  No file clicks yet.
+                </div>
 
-                <p className="text-5xl font-bold text-slate-900 mt-2">
-                  {fileClicks}
-                </p>
+              ) : (
 
-                <p className="text-sm text-slate-400 mt-2">
-                  Brochures and uploaded documents opened by visitors.
-                </p>
+                <div className="space-y-4">
 
-              </div>
+                  {topFiles.map(
+                    (
+                      [shareId, clicks],
+                      index
+                    ) => {
+
+                      const file =
+                        shareLinks[
+                          shareId
+                        ];
+
+                      return (
+                        <div
+                          key={shareId}
+                          className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100"
+                        >
+
+                          <div className="flex items-center gap-4 min-w-0">
+
+                            <div className="w-9 h-9 shrink-0 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-bold">
+                              {index + 1}
+                            </div>
+
+                            <div className="min-w-0">
+
+                              <p className="font-medium text-slate-800 truncate">
+                                {file?.title ||
+                                  file?.file_name ||
+                                  "Unknown File"}
+                              </p>
+
+                              {file?.file_name && (
+                                <p className="text-xs text-slate-400 truncate">
+                                  {file.file_name}
+                                </p>
+                              )}
+
+                            </div>
+
+                          </div>
+
+                          <div className="text-right shrink-0">
+
+                            <p className="font-bold text-slate-900">
+                              {clicks}
+                            </p>
+
+                            <p className="text-xs text-slate-400">
+                              opens
+                            </p>
+
+                          </div>
+
+                        </div>
+                      );
+                    }
+                  )}
+
+                </div>
+
+              )}
 
             </div>
 
@@ -1224,10 +1326,7 @@ export default function DashboardPage() {
 
         </div>
 
-        {/* =====================================================
-            RECENT ACTIVITY
-        ===================================================== */}
-
+        {/* RECENT ACTIVITY */}
         <section className="mt-8 bg-white rounded-2xl border border-slate-200 shadow-sm">
 
           <div className="p-6 border-b border-slate-200">
@@ -1269,18 +1368,29 @@ export default function DashboardPage() {
                         ]
                       : null;
 
+                  const file =
+                    item.share_link_id
+                      ? shareLinks[
+                          item.share_link_id
+                        ]
+                      : null;
+
                   let activityText =
-                    "Profile viewed";
+                    "viewed your profile";
+
+                  let icon = "👁️";
 
                   if (
                     item.type ===
                     "link"
                   ) {
                     activityText =
-                      `Clicked ${
+                      `clicked ${
                         link?.title ||
                         "a link"
                       }`;
+
+                    icon = "🔗";
                   }
 
                   if (
@@ -1288,7 +1398,13 @@ export default function DashboardPage() {
                     "file"
                   ) {
                     activityText =
-                      "Opened a brochure/file";
+                      `opened ${
+                        file?.title ||
+                        file?.file_name ||
+                        "a file"
+                      }`;
+
+                    icon = "📄";
                   }
 
                   return (
@@ -1300,26 +1416,30 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-3 min-w-0">
 
                         <div className="w-10 h-10 shrink-0 rounded-full bg-slate-100 flex items-center justify-center">
-                          {item.type ===
-                          "profile"
-                            ? "👁️"
-                            : item.type ===
-                              "file"
-                            ? "📄"
-                            : "🔗"}
+                          {icon}
                         </div>
 
                         <div className="min-w-0">
 
                           <p className="text-sm font-medium text-slate-800">
+
                             {visitor
                               ? `${
                                   visitor.display_name ||
                                   visitor.username ||
                                   "InstaView User"
-                                } ${activityText.toLowerCase()}`
-                              : `Anonymous visitor ${activityText.toLowerCase()}`}
+                                } ${activityText}`
+                              : `Anonymous visitor ${activityText}`}
+
                           </p>
+
+                          {item.type ===
+                            "file" &&
+                            file?.file_name && (
+                              <p className="text-xs text-slate-400 truncate mt-1">
+                                {file.file_name}
+                              </p>
+                            )}
 
                           {visitor?.username && (
                             <p className="text-xs text-slate-400">
@@ -1348,10 +1468,7 @@ export default function DashboardPage() {
 
         </section>
 
-        {/* =====================================================
-            MANAGE PROFILE
-        ===================================================== */}
-
+        {/* MANAGE PROFILE */}
         <section className="mt-8 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
