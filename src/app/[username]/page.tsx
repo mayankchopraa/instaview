@@ -190,7 +190,8 @@ export default function PublicProfilePage() {
             user_id: profileOwnerId,
             viewer_id: user?.id || null,
             profile_view: true,
-            link_id: null,
+link_id: null,
+interaction_type: "profile_view",
           });
 
       if (error) {
@@ -241,7 +242,8 @@ export default function PublicProfilePage() {
             user_id: profile.user_id,
             viewer_id: user?.id || null,
             profile_view: false,
-            link_id: link.id,
+link_id: link.id,
+interaction_type: "link_click",
           });
 
       if (error) {
@@ -292,7 +294,8 @@ export default function PublicProfilePage() {
             user_id: profile.user_id,
             viewer_id: user?.id || null,
             profile_view: false,
-            link_id: null,
+link_id: null,
+interaction_type: "file_click",
           });
 
       if (error) {

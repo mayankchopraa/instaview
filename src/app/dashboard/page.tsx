@@ -18,6 +18,7 @@ type AnalyticsRow = {
   viewer_id: string | null;
   profile_view: boolean;
   link_id: string | null;
+  interaction_type: string | null;
 };
 
 type VisitorProfile = {
@@ -44,7 +45,7 @@ type OwnProfile = {
 type ActivityItem = {
   id: string;
   date: string;
-  type: "profile" | "link";
+  type: "profile" | "link" | "file";
   visitor_id: string | null;
   link_id: string | null;
 };
@@ -54,7 +55,9 @@ export default function DashboardPage() {
     ProfileViewRow[]
   >([]);
 
-  const [analytics, setAnalytics] = useState<AnalyticsRow[]>([]);
+  const [analytics, setAnalytics] = useState<
+    AnalyticsRow[]
+  >([]);
 
   const [visitors, setVisitors] = useState<
     Record<string, VisitorProfile>
@@ -67,10 +70,14 @@ export default function DashboardPage() {
   const [profile, setProfile] =
     useState<OwnProfile | null>(null);
 
-  const [loading, setLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState("");
-  const [copyMessage, setCopyMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] =
+    useState(true);
+
+  const [copyMessage, setCopyMessage] =
+    useState("");
+
+  const [errorMessage, setErrorMessage] =
+    useState("");
 
   useEffect(() => {
     loadDashboard();
@@ -82,15 +89,21 @@ export default function DashboardPage() {
       setErrorMessage("");
 
       /*
-       * GET LOGGED-IN USER
+       * =====================================================
+       * GET CURRENT USER
+       * =====================================================
        */
+
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
       if (userError) {
-        console.error("Auth error:", userError);
+        console.error(
+          "Auth error:",
+          userError
+        );
       }
 
       if (!user) {
@@ -98,11 +111,12 @@ export default function DashboardPage() {
         return;
       }
 
-      setUserEmail(user.email || "");
-
       /*
+       * =====================================================
        * LOAD OWN PROFILE
+       * =====================================================
        */
+
       const {
         data: ownProfile,
         error: ownProfileError,
@@ -116,7 +130,7 @@ export default function DashboardPage() {
 
       if (ownProfileError) {
         console.error(
-          "Own profile error:",
+          "Profile error:",
           ownProfileError
         );
       }
@@ -130,9 +144,10 @@ export default function DashboardPage() {
        * LOAD PROFILE VIEWS
        *
        * IMPORTANT:
-       * This uses ProfileViews, NOT Analytics.
+       * Profile views come from ProfileViews.
        * =====================================================
        */
+
       const {
         data: profileViews,
         error: profileViewsError,
@@ -152,29 +167,28 @@ export default function DashboardPage() {
           profileViewsError
         );
 
-        setErrorMessage(
-          `Unable to load profile views: ${profileViewsError.message}`
-        );
-
         setProfileViewsData([]);
       } else {
-        setProfileViewsData(profileViews || []);
+        setProfileViewsData(
+          profileViews || []
+        );
       }
 
       /*
        * =====================================================
        * LOAD ANALYTICS
        *
-       * We still use Analytics for LINK CLICKS.
+       * interaction_type is now included.
        * =====================================================
        */
+
       const {
         data: analyticsData,
         error: analyticsError,
       } = await supabase
         .from("Analytics")
         .select(
-          "id, created_at, user_id, viewer_id, profile_view, link_id"
+          "id, created_at, user_id, viewer_id, profile_view, link_id, interaction_type"
         )
         .eq("user_id", user.id)
         .order("created_at", {
@@ -189,24 +203,22 @@ export default function DashboardPage() {
 
         setAnalytics([]);
       } else {
-        setAnalytics(analyticsData || []);
+        setAnalytics(
+          analyticsData || []
+        );
       }
 
       /*
        * =====================================================
-       * GET ALL VISITOR IDS
-       *
-       * ProfileViews:
-       * visitor_user_id
-       *
-       * Analytics:
-       * viewer_id
+       * COLLECT VISITOR IDS
        * =====================================================
        */
+
       const profileViewVisitorIds =
         (profileViews || [])
           .filter(
-            (item) => item.visitor_user_id
+            (item) =>
+              item.visitor_user_id
           )
           .map(
             (item) =>
@@ -216,7 +228,8 @@ export default function DashboardPage() {
       const analyticsVisitorIds =
         (analyticsData || [])
           .filter(
-            (item) => item.viewer_id
+            (item) =>
+              item.viewer_id
           )
           .map(
             (item) =>
@@ -235,6 +248,7 @@ export default function DashboardPage() {
        * LOAD VISITOR PROFILES
        * =====================================================
        */
+
       if (visitorIds.length > 0) {
         const {
           data: visitorData,
@@ -244,11 +258,14 @@ export default function DashboardPage() {
           .select(
             "user_id, username, display_name, avatar_url"
           )
-          .in("user_id", visitorIds);
+          .in(
+            "user_id",
+            visitorIds
+          );
 
         if (visitorError) {
           console.error(
-            "Visitor profiles error:",
+            "Visitor profile error:",
             visitorError
           );
         }
@@ -259,25 +276,34 @@ export default function DashboardPage() {
             VisitorProfile
           > = {};
 
-          visitorData.forEach((visitor) => {
-            visitorMap[visitor.user_id] =
-              visitor;
-          });
+          visitorData.forEach(
+            (visitor) => {
+              visitorMap[
+                visitor.user_id
+              ] = visitor;
+            }
+          );
 
-          setVisitors(visitorMap);
+          setVisitors(
+            visitorMap
+          );
         }
       }
 
       /*
        * =====================================================
-       * LOAD LINK INFORMATION
+       * LOAD LINKS
        * =====================================================
        */
+
       const linkIds = Array.from(
         new Set(
           (analyticsData || [])
             .filter(
-              (item) => item.link_id
+              (item) =>
+                item.interaction_type ===
+                  "link_click" &&
+                item.link_id
             )
             .map(
               (item) =>
@@ -292,8 +318,13 @@ export default function DashboardPage() {
           error: linksError,
         } = await supabase
           .from("Links")
-          .select("id, title, url")
-          .in("id", linkIds);
+          .select(
+            "id, title, url"
+          )
+          .in(
+            "id",
+            linkIds
+          );
 
         if (linksError) {
           console.error(
@@ -308,21 +339,26 @@ export default function DashboardPage() {
             ProfileLink
           > = {};
 
-          linksData.forEach((link) => {
-            linkMap[link.id] = link;
-          });
+          linksData.forEach(
+            (link) => {
+              linkMap[link.id] =
+                link;
+            }
+          );
 
-          setProfileLinks(linkMap);
+          setProfileLinks(
+            linkMap
+          );
         }
       }
     } catch (error) {
       console.error(
-        "Dashboard error:",
+        "Dashboard loading error:",
         error
       );
 
       setErrorMessage(
-        "Something went wrong while loading the dashboard."
+        "Something went wrong while loading your dashboard."
       );
     } finally {
       setLoading(false);
@@ -338,19 +374,20 @@ export default function DashboardPage() {
   const profileViews =
     profileViewsData.length;
 
-  const identifiedViewerIds = Array.from(
-    new Set(
-      profileViewsData
-        .filter(
-          (item) =>
-            item.visitor_user_id
-        )
-        .map(
-          (item) =>
-            item.visitor_user_id as string
-        )
-    )
-  );
+  const identifiedViewerIds =
+    Array.from(
+      new Set(
+        profileViewsData
+          .filter(
+            (item) =>
+              item.visitor_user_id
+          )
+          .map(
+            (item) =>
+              item.visitor_user_id as string
+          )
+      )
+    );
 
   const identifiedVisitors =
     identifiedViewerIds.length;
@@ -362,8 +399,11 @@ export default function DashboardPage() {
     ).length;
 
   /*
+   * =====================================================
    * RETURNING VISITORS
+   * =====================================================
    */
+
   const viewerVisitCounts: Record<
     string,
     number
@@ -375,11 +415,15 @@ export default function DashboardPage() {
         item.visitor_user_id
     )
     .forEach((item) => {
-      const id =
+      const visitorId =
         item.visitor_user_id as string;
 
-      viewerVisitCounts[id] =
-        (viewerVisitCounts[id] || 0) + 1;
+      viewerVisitCounts[
+        visitorId
+      ] =
+        (viewerVisitCounts[
+          visitorId
+        ] || 0) + 1;
     });
 
   const returningVisitors =
@@ -398,20 +442,51 @@ export default function DashboardPage() {
   const linkClicks =
     analytics.filter(
       (item) =>
-        item.profile_view === false &&
-        item.link_id
+        item.interaction_type ===
+        "link_click"
     ).length;
 
-  const totalInteractions =
-    profileViews + linkClicks;
+  /*
+   * =====================================================
+   * FILE CLICKS
+   * =====================================================
+   */
+
+  const fileClicks =
+    analytics.filter(
+      (item) =>
+        item.interaction_type ===
+        "file_click"
+    ).length;
 
   /*
-   * CLICK RATE
+   * =====================================================
+   * TOTAL ACTIVITY
+   * =====================================================
    */
+
+  const totalInteractions =
+    profileViews +
+    linkClicks +
+    fileClicks;
+
+  /*
+   * =====================================================
+   * CLICK RATE
+   *
+   * Normal links + files
+   * divided by profile views.
+   * =====================================================
+   */
+
+  const totalClicks =
+    linkClicks +
+    fileClicks;
+
   const clickRate =
     profileViews > 0
       ? (
-          (linkClicks /
+          (totalClicks /
             profileViews) *
           100
         ).toFixed(1)
@@ -427,32 +502,35 @@ export default function DashboardPage() {
     analytics
       .filter(
         (item) =>
-          item.profile_view === false &&
+          item.interaction_type ===
+            "link_click" &&
           item.link_id
       )
-      .reduce<Record<string, number>>(
-        (acc, item) => {
-          const linkId =
-            item.link_id as string;
+      .reduce<
+        Record<string, number>
+      >((acc, item) => {
+        const linkId =
+          item.link_id as string;
 
-          acc[linkId] =
-            (acc[linkId] || 0) + 1;
+        acc[linkId] =
+          (acc[linkId] || 0) + 1;
 
-          return acc;
-        },
-        {}
-      );
+        return acc;
+      }, {});
 
   const topLinks =
-    Object.entries(linkStats)
+    Object.entries(
+      linkStats
+    )
       .sort(
-        (a, b) => b[1] - a[1]
+        (a, b) =>
+          b[1] - a[1]
       )
       .slice(0, 5);
 
   /*
    * =====================================================
-   * COMBINED RECENT ACTIVITY
+   * RECENT ACTIVITY
    * =====================================================
    */
 
@@ -470,31 +548,41 @@ export default function DashboardPage() {
           })
         );
 
-      const linkActivities: ActivityItem[] =
+      const interactionActivities: ActivityItem[] =
         analytics
           .filter(
             (item) =>
-              item.profile_view ===
-                false &&
-              item.link_id
+              item.interaction_type ===
+                "link_click" ||
+              item.interaction_type ===
+                "file_click"
           )
           .map((item) => ({
-            id: `link-${item.id}`,
+            id: `interaction-${item.id}`,
             date: item.created_at,
-            type: "link",
+            type:
+              item.interaction_type ===
+              "file_click"
+                ? "file"
+                : "link",
             visitor_id:
               item.viewer_id,
-            link_id: item.link_id,
+            link_id:
+              item.link_id,
           }));
 
       return [
         ...profileActivities,
-        ...linkActivities,
+        ...interactionActivities,
       ]
         .sort(
           (a, b) =>
-            new Date(b.date).getTime() -
-            new Date(a.date).getTime()
+            new Date(
+              b.date
+            ).getTime() -
+            new Date(
+              a.date
+            ).getTime()
         )
         .slice(0, 10);
     }, [
@@ -508,28 +596,22 @@ export default function DashboardPage() {
    * =====================================================
    */
 
-  function formatDate(date: string) {
+  function formatDate(
+    date: string
+  ) {
     return new Date(
       date
-    ).toLocaleString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    ).toLocaleString(
+      "en-IN",
+      {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }
+    );
   }
-
-  /*
-   * =====================================================
-   * PUBLIC PROFILE URL
-   * =====================================================
-   */
-
-  const publicProfileUrl =
-    profile?.username
-      ? `${window.location.origin}/${profile.username}`
-      : "";
 
   /*
    * =====================================================
@@ -538,11 +620,18 @@ export default function DashboardPage() {
    */
 
   async function copyProfileLink() {
-    if (!publicProfileUrl) return;
+    if (
+      !profile?.username
+    ) {
+      return;
+    }
+
+    const url =
+      `${window.location.origin}/${profile.username}`;
 
     try {
       await navigator.clipboard.writeText(
-        publicProfileUrl
+        url
       );
 
       setCopyMessage(
@@ -583,11 +672,13 @@ export default function DashboardPage() {
     return (
       <main className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
+
           <div className="w-10 h-10 border-4 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto" />
 
           <p className="mt-4 text-slate-600">
             Loading dashboard...
           </p>
+
         </div>
       </main>
     );
@@ -604,9 +695,10 @@ export default function DashboardPage() {
 
       {/* HEADER */}
       <header className="border-b border-[#E5E7EB] bg-white">
+
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
 
-          <a
+          <Link
             href="/dashboard"
             className="flex items-center"
           >
@@ -615,7 +707,7 @@ export default function DashboardPage() {
               alt="InstaView"
               className="h-auto w-[180px] object-contain"
             />
-          </a>
+          </Link>
 
           <div className="flex items-center gap-3">
 
@@ -624,28 +716,30 @@ export default function DashboardPage() {
                 href={`/${profile.username}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg bg-[#635BFF] px-6 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[#5148E5]"
+                className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg bg-[#635BFF] px-6 text-sm font-semibold text-white hover:bg-[#5148E5]"
               >
                 View Profile
               </a>
             )}
 
-            <a
+            <Link
               href="/profile"
-              className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg border border-[#D9DEEA] bg-white px-6 text-sm font-semibold text-[#18213A] transition-all duration-200 hover:border-[#635BFF] hover:text-[#635BFF]"
+              className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg border border-[#D9DEEA] bg-white px-6 text-sm font-semibold text-[#18213A] hover:border-[#635BFF] hover:text-[#635BFF]"
             >
               Edit Profile
-            </a>
+            </Link>
 
             <button
               onClick={logout}
-              className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg border border-red-200 bg-white px-6 text-sm font-semibold text-red-600 transition-all duration-200 hover:bg-red-50"
+              className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg border border-red-200 bg-white px-6 text-sm font-semibold text-red-600 hover:bg-red-50"
             >
               Logout
             </button>
 
           </div>
+
         </div>
+
       </header>
 
       {/* MAIN */}
@@ -653,6 +747,7 @@ export default function DashboardPage() {
 
         {/* TITLE */}
         <div className="mb-8">
+
           <h1 className="text-3xl font-bold text-slate-900">
             Analytics Dashboard
           </h1>
@@ -660,6 +755,7 @@ export default function DashboardPage() {
           <p className="mt-2 text-slate-500">
             Understand who interacts with your profile.
           </p>
+
         </div>
 
         {/* ERROR */}
@@ -675,6 +771,7 @@ export default function DashboardPage() {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
 
             <div>
+
               <h2 className="text-lg font-bold text-slate-900">
                 Your Live Profile
               </h2>
@@ -686,7 +783,10 @@ export default function DashboardPage() {
                   </p>
 
                   <div className="mt-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 break-all">
-                    {publicProfileUrl}
+                    {typeof window !==
+                      "undefined"
+                      ? `${window.location.origin}/${profile.username}`
+                      : `/${profile.username}`}
                   </div>
                 </>
               ) : (
@@ -694,11 +794,12 @@ export default function DashboardPage() {
                   You haven't created your public profile yet.
                 </p>
               )}
+
             </div>
 
             <div className="flex gap-3 shrink-0">
 
-              {profile?.username ? (
+              {profile?.username && (
                 <>
                   <Link
                     href={`/${profile.username}`}
@@ -709,22 +810,18 @@ export default function DashboardPage() {
                   </Link>
 
                   <button
-                    onClick={copyProfileLink}
+                    onClick={
+                      copyProfileLink
+                    }
                     className="px-5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50"
                   >
                     Copy Link
                   </button>
                 </>
-              ) : (
-                <Link
-                  href="/profile"
-                  className="px-5 py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
-                >
-                  Create Profile
-                </Link>
               )}
 
             </div>
+
           </div>
 
           {copyMessage && (
@@ -735,11 +832,15 @@ export default function DashboardPage() {
 
         </section>
 
-        {/* STAT CARDS */}
+        {/* =====================================================
+            STAT CARDS
+        ===================================================== */}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
 
           {/* PROFILE VIEWS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+
             <p className="text-sm text-slate-500">
               Profile Views
             </p>
@@ -751,10 +852,12 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-400 mt-2">
               Total profile visits
             </p>
+
           </div>
 
-          {/* IDENTIFIED */}
+          {/* IDENTIFIED VISITORS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+
             <p className="text-sm text-slate-500">
               Identified Visitors
             </p>
@@ -766,25 +869,12 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-400 mt-2">
               Logged-in visitors
             </p>
-          </div>
 
-          {/* ANONYMOUS */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <p className="text-sm text-slate-500">
-              Anonymous Visits
-            </p>
-
-            <p className="text-4xl font-bold text-slate-900 mt-2">
-              {anonymousViews}
-            </p>
-
-            <p className="text-xs text-slate-400 mt-2">
-              Visitors without accounts
-            </p>
           </div>
 
           {/* LINK CLICKS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+
             <p className="text-sm text-slate-500">
               Link Clicks
             </p>
@@ -794,12 +884,31 @@ export default function DashboardPage() {
             </p>
 
             <p className="text-xs text-slate-400 mt-2">
-              Total link interactions
+              Website & social links
             </p>
+
           </div>
 
-          {/* RETURNING */}
+          {/* FILE CLICKS */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+
+            <p className="text-sm text-slate-500">
+              File Clicks
+            </p>
+
+            <p className="text-4xl font-bold text-slate-900 mt-2">
+              {fileClicks}
+            </p>
+
+            <p className="text-xs text-slate-400 mt-2">
+              Brochures & files opened
+            </p>
+
+          </div>
+
+          {/* RETURNING VISITORS */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+
             <p className="text-sm text-slate-500">
               Returning Visitors
             </p>
@@ -809,8 +918,9 @@ export default function DashboardPage() {
             </p>
 
             <p className="text-xs text-slate-400 mt-2">
-              Logged-in users returning
+              Users who returned
             </p>
+
           </div>
 
         </div>
@@ -818,7 +928,9 @@ export default function DashboardPage() {
         {/* SECONDARY STATS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">
 
+          {/* CLICK RATE */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+
             <p className="text-sm text-slate-500">
               Click Rate
             </p>
@@ -828,11 +940,14 @@ export default function DashboardPage() {
             </p>
 
             <p className="text-xs text-slate-400 mt-2">
-              Link clicks compared with profile views
+              Links + files compared with profile views
             </p>
+
           </div>
 
+          {/* TOTAL ACTIVITY */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+
             <p className="text-sm text-slate-500">
               Total Activity
             </p>
@@ -842,8 +957,9 @@ export default function DashboardPage() {
             </p>
 
             <p className="text-xs text-slate-400 mt-2">
-              Views + link clicks
+              Views + link clicks + file clicks
             </p>
+
           </div>
 
         </div>
@@ -851,17 +967,19 @@ export default function DashboardPage() {
         {/* =====================================================
             WHO VIEWED YOUR PROFILE
         ===================================================== */}
+
         <section className="mt-8 bg-white rounded-2xl border border-slate-200 shadow-sm">
 
           <div className="p-6 border-b border-slate-200">
+
             <h2 className="text-lg font-bold text-slate-900">
               Who Viewed Your Profile
             </h2>
 
             <p className="text-sm text-slate-500 mt-1">
-              Logged-in visitors are shown by their InstaView profile.
-              Anonymous visitors are shown separately.
+              See who has visited your profile.
             </p>
+
           </div>
 
           <div className="divide-y divide-slate-100">
@@ -893,7 +1011,6 @@ export default function DashboardPage() {
 
                       <div className="flex items-center gap-4 min-w-0">
 
-                        {/* AVATAR */}
                         {visitor?.avatar_url ? (
 
                           <img
@@ -910,7 +1027,7 @@ export default function DashboardPage() {
 
                         ) : (
 
-                          <div className="w-11 h-11 shrink-0 rounded-full bg-slate-100 flex items-center justify-center text-lg">
+                          <div className="w-11 h-11 shrink-0 rounded-full bg-slate-100 flex items-center justify-center">
                             {visitor
                               ? "👤"
                               : "👻"}
@@ -918,11 +1035,9 @@ export default function DashboardPage() {
 
                         )}
 
-                        {/* VISITOR INFO */}
                         <div className="min-w-0">
 
                           {visitor ? (
-
                             <>
                               <p className="font-semibold text-slate-900 truncate">
                                 {visitor.display_name ||
@@ -940,9 +1055,7 @@ export default function DashboardPage() {
                                 Viewed your profile
                               </p>
                             </>
-
                           ) : (
-
                             <>
                               <p className="font-semibold text-slate-900">
                                 Anonymous Visitor
@@ -951,25 +1064,18 @@ export default function DashboardPage() {
                               <p className="text-xs text-slate-500">
                                 Visitor without an InstaView account
                               </p>
-
-                              <p className="text-xs text-slate-400 mt-1">
-                                Viewed your profile
-                              </p>
                             </>
-
                           )}
 
                         </div>
+
                       </div>
 
-                      {/* VIEW TIME */}
-                      <div className="text-right shrink-0">
-                        <p className="text-xs text-slate-400">
-                          {formatDate(
-                            item.viewed_at
-                          )}
-                        </p>
-                      </div>
+                      <p className="text-xs text-slate-400 shrink-0">
+                        {formatDate(
+                          item.viewed_at
+                        )}
+                      </p>
 
                     </div>
                   );
@@ -978,11 +1084,13 @@ export default function DashboardPage() {
             )}
 
           </div>
+
         </section>
 
         {/* =====================================================
-            TOP LINKS + RECENT ACTIVITY
+            TOP LINKS + FILE CLICKS
         ===================================================== */}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
 
           {/* TOP LINKS */}
@@ -995,7 +1103,7 @@ export default function DashboardPage() {
               </h2>
 
               <p className="text-sm text-slate-500 mt-1">
-                Your most clicked profile links
+                Your most clicked links.
               </p>
 
             </div>
@@ -1042,10 +1150,11 @@ export default function DashboardPage() {
                                   "Unknown Link"}
                               </p>
 
-                              <p className="text-xs text-slate-400 truncate">
-                                {link?.url ||
-                                  linkId}
-                              </p>
+                              {link?.url && (
+                                <p className="text-xs text-slate-400 truncate">
+                                  {link.url}
+                                </p>
+                              )}
 
                             </div>
 
@@ -1076,113 +1185,38 @@ export default function DashboardPage() {
 
           </section>
 
-          {/* RECENT ACTIVITY */}
+          {/* FILE CLICK SUMMARY */}
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
 
             <div className="p-6 border-b border-slate-200">
 
               <h2 className="text-lg font-bold text-slate-900">
-                Recent Activity
+                Brochure & File Activity
               </h2>
 
               <p className="text-sm text-slate-500 mt-1">
-                Latest visitors and interactions
+                See how many times visitors opened your files.
               </p>
 
             </div>
 
-            <div className="divide-y divide-slate-100">
+            <div className="p-6">
 
-              {recentActivity.length === 0 ? (
+              <div className="rounded-2xl bg-slate-50 border border-slate-100 p-6">
 
-                <div className="p-10 text-center text-slate-500">
-                  No activity yet.
-                </div>
+                <p className="text-sm text-slate-500">
+                  Total File Opens
+                </p>
 
-              ) : (
+                <p className="text-5xl font-bold text-slate-900 mt-2">
+                  {fileClicks}
+                </p>
 
-                recentActivity.map(
-                  (item) => {
+                <p className="text-sm text-slate-400 mt-2">
+                  Brochures and uploaded documents opened by visitors.
+                </p>
 
-                    const visitor =
-                      item.visitor_id
-                        ? visitors[
-                            item.visitor_id
-                          ]
-                        : null;
-
-                    const link =
-                      item.link_id
-                        ? profileLinks[
-                            item.link_id
-                          ]
-                        : null;
-
-                    return (
-                      <div
-                        key={item.id}
-                        className="px-6 py-4 flex items-center justify-between gap-4"
-                      >
-
-                        <div className="flex items-center gap-3 min-w-0">
-
-                          <div
-                            className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center ${
-                              item.type ===
-                              "profile"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-green-100 text-green-700"
-                            }`}
-                          >
-                            {item.type ===
-                            "profile"
-                              ? "👁"
-                              : "🔗"}
-                          </div>
-
-                          <div className="min-w-0">
-
-                            <p className="text-sm font-medium text-slate-800">
-
-                              {item.type ===
-                              "profile" ? (
-
-                                visitor
-                                  ? `${visitor.display_name || visitor.username || "InstaView User"} viewed your profile`
-                                  : "Anonymous visitor viewed your profile"
-
-                              ) : (
-
-                                visitor
-                                  ? `${visitor.display_name || visitor.username || "InstaView User"} clicked ${link?.title || "a link"}`
-                                  : `Anonymous visitor clicked ${link?.title || "a link"}`
-
-                              )}
-
-                            </p>
-
-                            {visitor?.username && (
-                              <p className="text-xs text-slate-400">
-                                @{visitor.username}
-                              </p>
-                            )}
-
-                          </div>
-
-                        </div>
-
-                        <p className="text-xs text-slate-400 shrink-0">
-                          {formatDate(
-                            item.date
-                          )}
-                        </p>
-
-                      </div>
-                    );
-                  }
-                )
-
-              )}
+              </div>
 
             </div>
 
@@ -1191,9 +1225,134 @@ export default function DashboardPage() {
         </div>
 
         {/* =====================================================
+            RECENT ACTIVITY
+        ===================================================== */}
+
+        <section className="mt-8 bg-white rounded-2xl border border-slate-200 shadow-sm">
+
+          <div className="p-6 border-b border-slate-200">
+
+            <h2 className="text-lg font-bold text-slate-900">
+              Recent Activity
+            </h2>
+
+            <p className="text-sm text-slate-500 mt-1">
+              Latest profile views, link clicks and file opens.
+            </p>
+
+          </div>
+
+          <div className="divide-y divide-slate-100">
+
+            {recentActivity.length === 0 ? (
+
+              <div className="p-10 text-center text-slate-500">
+                No activity yet.
+              </div>
+
+            ) : (
+
+              recentActivity.map(
+                (item) => {
+
+                  const visitor =
+                    item.visitor_id
+                      ? visitors[
+                          item.visitor_id
+                        ]
+                      : null;
+
+                  const link =
+                    item.link_id
+                      ? profileLinks[
+                          item.link_id
+                        ]
+                      : null;
+
+                  let activityText =
+                    "Profile viewed";
+
+                  if (
+                    item.type ===
+                    "link"
+                  ) {
+                    activityText =
+                      `Clicked ${
+                        link?.title ||
+                        "a link"
+                      }`;
+                  }
+
+                  if (
+                    item.type ===
+                    "file"
+                  ) {
+                    activityText =
+                      "Opened a brochure/file";
+                  }
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="px-6 py-4 flex items-center justify-between gap-4"
+                    >
+
+                      <div className="flex items-center gap-3 min-w-0">
+
+                        <div className="w-10 h-10 shrink-0 rounded-full bg-slate-100 flex items-center justify-center">
+                          {item.type ===
+                          "profile"
+                            ? "👁️"
+                            : item.type ===
+                              "file"
+                            ? "📄"
+                            : "🔗"}
+                        </div>
+
+                        <div className="min-w-0">
+
+                          <p className="text-sm font-medium text-slate-800">
+                            {visitor
+                              ? `${
+                                  visitor.display_name ||
+                                  visitor.username ||
+                                  "InstaView User"
+                                } ${activityText.toLowerCase()}`
+                              : `Anonymous visitor ${activityText.toLowerCase()}`}
+                          </p>
+
+                          {visitor?.username && (
+                            <p className="text-xs text-slate-400">
+                              @{visitor.username}
+                            </p>
+                          )}
+
+                        </div>
+
+                      </div>
+
+                      <p className="text-xs text-slate-400 shrink-0">
+                        {formatDate(
+                          item.date
+                        )}
+                      </p>
+
+                    </div>
+                  );
+                }
+              )
+
+            )}
+
+          </div>
+
+        </section>
+
+        {/* =====================================================
             MANAGE PROFILE
         ===================================================== */}
-        <div className="mt-8 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+
+        <section className="mt-8 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
 
@@ -1204,14 +1363,8 @@ export default function DashboardPage() {
               </h2>
 
               <p className="text-sm text-slate-500 mt-1">
-                Update your name, bio, photo and profile links.
+                Update your profile, links and uploaded files.
               </p>
-
-              {userEmail && (
-                <p className="text-xs text-slate-400 mt-2">
-                  Logged in as {userEmail}
-                </p>
-              )}
 
             </div>
 
@@ -1238,7 +1391,7 @@ export default function DashboardPage() {
 
           </div>
 
-        </div>
+        </section>
 
       </div>
     </main>
