@@ -53,9 +53,9 @@ export default function PublicProfilePage({
       const username = resolvedParams.username;
 
       /*
-       * ============================
+       * =====================================
        * LOAD PROFILE
-       * ============================
+       * =====================================
        */
 
       const {
@@ -83,9 +83,52 @@ export default function PublicProfilePage({
 
 
       /*
-       * ============================
+       * =====================================
+       * RECORD PROFILE VIEW
+       * =====================================
+       *
+       * If the visitor is logged in,
+       * record their user ID.
+       *
+       * Do not record the profile owner's
+       * own visit.
+       */
+
+      const {
+        data: {
+          user: visitor,
+        },
+      } = await supabase.auth.getUser();
+
+      if (
+        visitor &&
+        visitor.id !== profileData.user_id
+      ) {
+        const {
+          error: viewError,
+        } = await supabase
+          .from("ProfileViews")
+          .insert({
+            profile_user_id:
+              profileData.user_id,
+
+            visitor_user_id:
+              visitor.id,
+          });
+
+        if (viewError) {
+          console.error(
+            "Unable to record profile view:",
+            viewError
+          );
+        }
+      }
+
+
+      /*
+       * =====================================
        * LOAD NORMAL PROFILE LINKS
-       * ============================
+       * =====================================
        */
 
       const {
@@ -94,7 +137,10 @@ export default function PublicProfilePage({
       } = await supabase
         .from("Links")
         .select("id, title, url")
-        .eq("user_id", profileData.user_id)
+        .eq(
+          "user_id",
+          profileData.user_id
+        )
         .order("created_at", {
           ascending: true,
         });
@@ -110,9 +156,9 @@ export default function PublicProfilePage({
 
 
       /*
-       * ============================
+       * =====================================
        * LOAD BROCHURES / SHARED FILES
-       * ============================
+       * =====================================
        */
 
       const {
@@ -123,7 +169,10 @@ export default function PublicProfilePage({
         .select(
           "id, user_id, title, file_name, file_path, file_url, share_code, created_at"
         )
-        .eq("user_id", profileData.user_id)
+        .eq(
+          "user_id",
+          profileData.user_id
+        )
         .order("created_at", {
           ascending: false,
         });
@@ -140,7 +189,8 @@ export default function PublicProfilePage({
       console.error(err);
 
       setError(
-        err?.message || "Unable to load this profile."
+        err?.message ||
+          "Unable to load this profile."
       );
     } finally {
       setLoading(false);
@@ -149,9 +199,9 @@ export default function PublicProfilePage({
 
 
   /*
-   * ============================
-   * FILE URL
-   * ============================
+   * =====================================
+   * GET FILE URL
+   * =====================================
    */
 
   function getFileUrl(file: SharedFile) {
@@ -163,19 +213,23 @@ export default function PublicProfilePage({
       data: publicUrlData,
     } = supabase.storage
       .from("shared-files")
-      .getPublicUrl(file.file_path);
+      .getPublicUrl(
+        file.file_path
+      );
 
     return publicUrlData.publicUrl;
   }
 
 
   /*
-   * ============================
+   * =====================================
    * FILE ICON
-   * ============================
+   * =====================================
    */
 
-  function getFileIcon(fileName: string) {
+  function getFileIcon(
+    fileName: string
+  ) {
     const extension = fileName
       .split(".")
       .pop()
@@ -220,12 +274,14 @@ export default function PublicProfilePage({
 
 
   /*
-   * ============================
+   * =====================================
    * FILE TYPE
-   * ============================
+   * =====================================
    */
 
-  function getFileType(fileName: string) {
+  function getFileType(
+    fileName: string
+  ) {
     const extension = fileName
       .split(".")
       .pop()
@@ -236,33 +292,38 @@ export default function PublicProfilePage({
 
 
   /*
-   * ============================
-   * LOADING
-   * ============================
+   * =====================================
+   * LOADING SCREEN
+   * =====================================
    */
 
   if (loading) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+
         <div className="text-center">
+
           <div className="text-lg font-medium text-gray-700">
             Loading profile...
           </div>
+
         </div>
+
       </main>
     );
   }
 
 
   /*
-   * ============================
+   * =====================================
    * PROFILE NOT FOUND
-   * ============================
+   * =====================================
    */
 
   if (!profile) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
+
         <div className="text-center">
 
           <div className="text-5xl mb-4">
@@ -279,23 +340,24 @@ export default function PublicProfilePage({
           </p>
 
         </div>
+
       </main>
     );
   }
 
 
   /*
-   * ============================
-   * MAIN PROFILE
-   * ============================
+   * =====================================
+   * MAIN PAGE
+   * =====================================
    */
 
   return (
     <main className="min-h-screen bg-gray-50">
 
-      {/* ============================
+      {/* =================================
           HEADER
-      ============================ */}
+      ================================= */}
 
       <header className="bg-white border-b">
 
@@ -306,7 +368,7 @@ export default function PublicProfilePage({
             <img
               src="/logo-full.png"
               alt="InstaView"
-              className="h-auto w-[180px] object-contain"
+              className="h-auto w-[220px] object-contain"
             />
 
           </div>
@@ -316,18 +378,18 @@ export default function PublicProfilePage({
       </header>
 
 
-      {/* ============================
+      {/* =================================
           PROFILE CONTENT
-      ============================ */}
+      ================================= */}
 
       <div className="max-w-3xl mx-auto px-5 py-10">
 
         <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-7 sm:p-9">
 
 
-          {/* ============================
+          {/* =================================
               PROFILE PHOTO
-          ============================ */}
+          ================================= */}
 
           <div className="flex justify-center">
 
@@ -354,9 +416,9 @@ export default function PublicProfilePage({
           </div>
 
 
-          {/* ============================
+          {/* =================================
               NAME
-          ============================ */}
+          ================================= */}
 
           <div className="text-center mt-5">
 
@@ -378,22 +440,24 @@ export default function PublicProfilePage({
           </div>
 
 
-          {/* ============================
+          {/* =================================
               BIO
-          ============================ */}
+          ================================= */}
 
           {profile.bio && (
 
             <p className="mt-5 text-center text-gray-600 leading-relaxed max-w-xl mx-auto whitespace-pre-line">
+
               {profile.bio}
+
             </p>
 
           )}
 
 
-          {/* ============================
-              NORMAL LINKS
-          ============================ */}
+          {/* =================================
+              LINKS
+          ================================= */}
 
           {links.length > 0 && (
 
@@ -434,9 +498,9 @@ export default function PublicProfilePage({
           )}
 
 
-          {/* ============================
+          {/* =================================
               BROCHURES & FILES
-          ============================ */}
+          ================================= */}
 
           <section className="mt-9">
 
@@ -467,9 +531,11 @@ export default function PublicProfilePage({
                       {/* FILE ICON */}
 
                       <div className="w-12 h-12 shrink-0 rounded-lg bg-gray-100 flex items-center justify-center text-2xl">
+
                         {getFileIcon(
                           file.file_name
                         )}
+
                       </div>
 
 
@@ -536,9 +602,9 @@ export default function PublicProfilePage({
           </section>
 
 
-          {/* ============================
+          {/* =================================
               FOOTER
-          ============================ */}
+          ================================= */}
 
           <div className="mt-10 pt-6 border-t border-gray-100 text-center">
 
