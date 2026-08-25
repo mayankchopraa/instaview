@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 type Profile = {
-  id: string;
   user_id: string;
-  username: string | null;
+  username: string;
   display_name: string | null;
   bio: string | null;
   avatar_url: string | null;
@@ -18,62 +19,73 @@ type ProfileLink = {
   url: string;
 };
 
-type SharedFile = {
+type ShareLink = {
   id: string;
-  user_id: string;
-  title: string | null;
+  title: string;
   file_name: string;
   file_path: string;
-  file_url: string | null;
+  file_url: string;
   share_code: string;
   created_at: string;
 };
 
-export default function PublicProfilePage({
-  params,
-}: {
-  params: Promise<{ username: string }>;
-}) {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [links, setLinks] = useState<ProfileLink[]>([]);
-  const [sharedFiles, setSharedFiles] = useState<SharedFile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+export default function PublicProfilePage() {
+  const params = useParams();
 
+  const username =
+    typeof params?.username === "string"
+      ? params.username
+      : "";
+
+  const [profile, setProfile] =
+    useState<Profile | null>(null);
+
+  const [links, setLinks] =
+    useState<ProfileLink[]>([]);
+
+  const [shareLinks, setShareLinks] =
+    useState<ShareLink[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  /*
+   * LOAD PUBLIC PROFILE
+   */
   useEffect(() => {
+    if (!username) return;
+
     loadProfile();
-  }, []);
+  }, [username]);
 
-  async function loadProfile() {
+  const loadProfile = async () => {
+    setLoading(true);
+    setError("");
+
     try {
-      setLoading(true);
-      setError("");
-
-      const resolvedParams = await params;
-      const username = resolvedParams.username;
-
       /*
-       * =====================================
        * LOAD PROFILE
-       * =====================================
        */
-
       const {
         data: profileData,
         error: profileError,
       } = await supabase
         .from("Profiles")
         .select(
-          "id, user_id, username, display_name, bio, avatar_url"
+          "user_id, username, display_name, bio, avatar_url"
         )
         .eq("username", username)
-        .maybeSingle();
+        .single();
 
-      if (profileError) {
-        throw profileError;
-      }
+      if (profileError || !profileData) {
+        console.error(
+          "Profile error:",
+          profileError
+        );
 
-      if (!profileData) {
         setError("Profile not found.");
         setLoading(false);
         return;
@@ -81,540 +93,489 @@ export default function PublicProfilePage({
 
       setProfile(profileData);
 
-
       /*
-       * =====================================
-       * RECORD PROFILE VIEW
-       * =====================================
-       *
-       * If the visitor is logged in,
-       * record their user ID.
-       *
-       * Do not record the profile owner's
-       * own visit.
+       * LOAD NORMAL LINKS
        */
-
-      const {
-        data: {
-          user: visitor,
-        },
-      } = await supabase.auth.getUser();
-
-      if (
-        visitor &&
-        visitor.id !== profileData.user_id
-      ) {
-        const {
-          error: viewError,
-        } = await supabase
-          .from("ProfileViews")
-          .insert({
-            profile_user_id:
-              profileData.user_id,
-
-            visitor_user_id:
-              visitor.id,
-          });
-
-        if (viewError) {
-          console.error(
-            "Unable to record profile view:",
-            viewError
-          );
-        }
-      }
-
-
-      /*
-       * =====================================
-       * LOAD NORMAL PROFILE LINKS
-       * =====================================
-       */
-
       const {
         data: linksData,
         error: linksError,
       } = await supabase
         .from("Links")
         .select("id, title, url")
-        .eq(
-          "user_id",
-          profileData.user_id
-        )
+        .eq("user_id", profileData.user_id)
         .order("created_at", {
           ascending: true,
         });
 
       if (linksError) {
         console.error(
-          "Error loading profile links:",
+          "Links loading error:",
           linksError
         );
-      } else if (linksData) {
-        setLinks(linksData);
       }
 
+      setLinks(linksData || []);
 
       /*
-       * =====================================
-       * LOAD BROCHURES / SHARED FILES
-       * =====================================
+       * LOAD SHARED FILES / BROCHURES
        */
-
       const {
-        data: filesData,
-        error: filesError,
+        data: shareData,
+        error: shareError,
       } = await supabase
         .from("ShareLinks")
         .select(
-          "id, user_id, title, file_name, file_path, file_url, share_code, created_at"
+          "id, title, file_name, file_path, file_url, share_code, created_at"
         )
-        .eq(
-          "user_id",
-          profileData.user_id
-        )
+        .eq("user_id", profileData.user_id)
         .order("created_at", {
           ascending: false,
         });
 
-      if (filesError) {
+      if (shareError) {
         console.error(
-          "Error loading shared files:",
-          filesError
+          "Shared files loading error:",
+          shareError
         );
-      } else if (filesData) {
-        setSharedFiles(filesData);
       }
-    } catch (err: any) {
-      console.error(err);
+
+      setShareLinks(shareData || []);
+
+      /*
+       * RECORD PROFILE VIEW
+       */
+      await recordProfileView(
+        profileData.user_id
+      );
+    } catch (err) {
+      console.error(
+        "Error loading public profile:",
+        err
+      );
 
       setError(
-        err?.message ||
-          "Unable to load this profile."
+        "Something went wrong while loading this profile."
       );
     } finally {
       setLoading(false);
     }
-  }
-
+  };
 
   /*
-   * =====================================
-   * GET FILE URL
-   * =====================================
+   * RECORD PROFILE VIEW
    */
+  const recordProfileView = async (
+    profileOwnerId: string
+  ) => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-  function getFileUrl(file: SharedFile) {
-    if (file.file_url) {
-      return file.file_url;
-    }
+      /*
+       * Do not count owner viewing
+       * their own profile.
+       */
+      if (
+        user &&
+        user.id === profileOwnerId
+      ) {
+        return;
+      }
 
-    const {
-      data: publicUrlData,
-    } = supabase.storage
-      .from("shared-files")
-      .getPublicUrl(
-        file.file_path
+      const { error } =
+        await supabase
+          .from("Analytics")
+          .insert({
+            user_id: profileOwnerId,
+            viewer_id: user?.id || null,
+            profile_view: true,
+            link_id: null,
+          });
+
+      if (error) {
+        console.error(
+          "Profile view tracking error:",
+          error
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Analytics error:",
+        error
       );
-
-    return publicUrlData.publicUrl;
-  }
-
+    }
+  };
 
   /*
-   * =====================================
-   * FILE ICON
-   * =====================================
+   * RECORD NORMAL LINK CLICK
+   *
+   * IMPORTANT:
+   * This function does NOT block navigation.
    */
+  const recordLinkClick = async (
+    link: ProfileLink
+  ) => {
+    try {
+      if (!profile) return;
 
-  function getFileIcon(
-    fileName: string
-  ) {
-    const extension = fileName
-      .split(".")
-      .pop()
-      ?.toLowerCase();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    if (extension === "pdf") {
-      return "📕";
+      /*
+       * Don't count owner clicking
+       * their own link.
+       */
+      if (
+        user &&
+        user.id === profile.user_id
+      ) {
+        return;
+      }
+
+      const { error } =
+        await supabase
+          .from("Analytics")
+          .insert({
+            user_id: profile.user_id,
+            viewer_id: user?.id || null,
+            profile_view: false,
+            link_id: link.id,
+          });
+
+      if (error) {
+        console.error(
+          "Link click tracking error:",
+          error
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Link click tracking error:",
+        error
+      );
     }
-
-    if (
-      extension === "jpg" ||
-      extension === "jpeg" ||
-      extension === "png" ||
-      extension === "webp"
-    ) {
-      return "🖼️";
-    }
-
-    if (
-      extension === "doc" ||
-      extension === "docx"
-    ) {
-      return "📘";
-    }
-
-    if (
-      extension === "xls" ||
-      extension === "xlsx"
-    ) {
-      return "📊";
-    }
-
-    if (
-      extension === "ppt" ||
-      extension === "pptx"
-    ) {
-      return "📙";
-    }
-
-    return "📄";
-  }
-
+  };
 
   /*
-   * =====================================
-   * FILE TYPE
-   * =====================================
+   * RECORD FILE CLICK
+   *
+   * Files don't have a link_id in Analytics,
+   * so we record the click without link_id.
    */
+  const recordFileClick = async (
+    share: ShareLink
+  ) => {
+    try {
+      if (!profile) return;
 
-  function getFileType(
-    fileName: string
-  ) {
-    const extension = fileName
-      .split(".")
-      .pop()
-      ?.toUpperCase();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    return extension || "FILE";
-  }
+      /*
+       * Don't count owner clicking
+       * their own file.
+       */
+      if (
+        user &&
+        user.id === profile.user_id
+      ) {
+        return;
+      }
 
+      const { error } =
+        await supabase
+          .from("Analytics")
+          .insert({
+            user_id: profile.user_id,
+            viewer_id: user?.id || null,
+            profile_view: false,
+            link_id: null,
+          });
+
+      if (error) {
+        console.error(
+          "File click tracking error:",
+          error
+        );
+      }
+    } catch (error) {
+      console.error(
+        "File click tracking error:",
+        error
+      );
+    }
+  };
 
   /*
-   * =====================================
-   * LOADING SCREEN
-   * =====================================
+   * OPEN FILE
+   *
+   * Opens the actual Supabase public file URL.
    */
+  const openFile = (
+    share: ShareLink
+  ) => {
+    /*
+     * Track click in background.
+     * Do not wait for this before opening
+     * the file.
+     */
+    recordFileClick(share);
 
+    /*
+     * Open actual uploaded file.
+     */
+    window.open(
+      share.file_url,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
+  /*
+   * LOADING
+   */
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
+          <div className="w-10 h-10 mx-auto rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin" />
 
-          <div className="text-lg font-medium text-gray-700">
+          <p className="mt-4 text-slate-500">
             Loading profile...
-          </div>
-
+          </p>
         </div>
-
       </main>
     );
   }
 
-
   /*
-   * =====================================
-   * PROFILE NOT FOUND
-   * =====================================
+   * ERROR
    */
-
-  if (!profile) {
+  if (error || !profile) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
-
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
         <div className="text-center">
-
-          <div className="text-5xl mb-4">
-            😕
-          </div>
-
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-slate-900">
             Profile not found
           </h1>
 
-          <p className="mt-2 text-gray-500">
-            {error ||
-              "This profile does not exist."}
+          <p className="mt-2 text-slate-500">
+            {error || "This profile does not exist."}
           </p>
 
+          <Link
+            href="/"
+            className="inline-block mt-6 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white"
+          >
+            Go Home
+          </Link>
         </div>
-
       </main>
     );
   }
 
-
-  /*
-   * =====================================
-   * MAIN PAGE
-   * =====================================
-   */
-
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-slate-50 py-10 px-4">
 
-      {/* =================================
-          HEADER
-      ================================= */}
+      {/* =========================
+          PUBLIC PROFILE
+      ========================== */}
 
-      <header className="bg-white border-b">
+      <div className="max-w-xl mx-auto">
 
-        <div className="max-w-3xl mx-auto px-6 py-5">
+        <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
 
-          <div className="flex items-center justify-center">
+          {/* COVER */}
+          <div className="h-28 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400" />
 
-            <img
-              src="/logo-full.png"
-              alt="InstaView"
-              className="h-auto w-[220px] object-contain"
-            />
+          <div className="px-6 pb-8">
 
-          </div>
+            {/* PROFILE PHOTO */}
+            <div className="flex justify-center -mt-14">
 
-        </div>
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={
+                    profile.display_name ||
+                    profile.username
+                  }
+                  className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md"
+                />
+              ) : (
+                <div className="w-28 h-28 rounded-full bg-slate-200 border-4 border-white shadow-md flex items-center justify-center text-4xl">
+                  👤
+                </div>
+              )}
 
-      </header>
+            </div>
 
+            {/* PROFILE INFORMATION */}
+            <div className="text-center mt-4">
 
-      {/* =================================
-          PROFILE CONTENT
-      ================================= */}
+              <h1 className="text-2xl font-bold text-slate-900">
+                {profile.display_name ||
+                  profile.username}
+              </h1>
 
-      <div className="max-w-3xl mx-auto px-5 py-10">
-
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-7 sm:p-9">
-
-
-          {/* =================================
-              PROFILE PHOTO
-          ================================= */}
-
-          <div className="flex justify-center">
-
-            {profile.avatar_url ? (
-
-              <img
-                src={profile.avatar_url}
-                alt={
-                  profile.display_name ||
-                  profile.username ||
-                  "Profile"
-                }
-                className="w-28 h-28 rounded-full object-cover border border-gray-200 bg-white"
-              />
-
-            ) : (
-
-              <div className="w-28 h-28 rounded-full bg-gray-100 flex items-center justify-center text-4xl border border-gray-200">
-                👤
-              </div>
-
-            )}
-
-          </div>
-
-
-          {/* =================================
-              NAME
-          ================================= */}
-
-          <div className="text-center mt-5">
-
-            <h1 className="text-2xl font-bold text-gray-900">
-
-              {profile.display_name ||
-                profile.username}
-
-            </h1>
-
-            {profile.username && (
-
-              <p className="mt-1 text-gray-500">
+              <p className="text-sm text-slate-500 mt-1">
                 @{profile.username}
               </p>
 
-            )}
+              {profile.bio && (
+                <p className="text-slate-600 mt-4 leading-relaxed">
+                  {profile.bio}
+                </p>
+              )}
 
-          </div>
+            </div>
 
+            {/* =========================
+                NORMAL LINKS
+            ========================== */}
 
-          {/* =================================
-              BIO
-          ================================= */}
+            <div className="mt-8 space-y-3">
 
-          {profile.bio && (
+              {links.length > 0 ? (
 
-            <p className="mt-5 text-center text-gray-600 leading-relaxed max-w-xl mx-auto whitespace-pre-line">
-
-              {profile.bio}
-
-            </p>
-
-          )}
-
-
-          {/* =================================
-              LINKS
-          ================================= */}
-
-          {links.length > 0 && (
-
-            <section className="mt-8">
-
-              <h2 className="text-lg font-bold text-gray-900 mb-4">
-                Links
-              </h2>
-
-              <div className="space-y-3">
-
-                {links.map((link) => (
+                links.map((link) => (
 
                   <a
                     key={link.id}
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between gap-4 w-full rounded-xl border border-gray-200 bg-white px-5 py-4 transition hover:bg-gray-50 hover:shadow-sm"
+                    onClick={() => {
+                      /*
+                       * Do not await this.
+                       * Navigation happens immediately.
+                       */
+                      void recordLinkClick(link);
+                    }}
+                    className="block w-full rounded-xl border border-slate-200 bg-white px-5 py-4 text-center font-medium text-slate-800 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
                   >
-
-                    <span className="font-medium text-gray-900 truncate">
-                      {link.title}
-                    </span>
-
-                    <span className="shrink-0 text-gray-400 text-xl">
-                      →
-                    </span>
-
+                    {link.title}
                   </a>
 
-                ))}
+                ))
 
-              </div>
+              ) : (
 
-            </section>
-
-          )}
-
-
-          {/* =================================
-              BROCHURES & FILES
-          ================================= */}
-
-          <section className="mt-9">
-
-            <h2 className="text-lg font-bold text-gray-900 mb-4">
-              Brochures & Files
-            </h2>
-
-
-            {sharedFiles.length > 0 ? (
-
-              <div className="space-y-3">
-
-                {sharedFiles.map((file) => {
-
-                  const fileUrl =
-                    getFileUrl(file);
-
-                  return (
-
-                    <a
-                      key={file.id}
-                      href={fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center gap-4 w-full rounded-xl border border-gray-200 bg-white p-4 transition hover:bg-gray-50 hover:shadow-sm"
-                    >
-
-                      {/* FILE ICON */}
-
-                      <div className="w-12 h-12 shrink-0 rounded-lg bg-gray-100 flex items-center justify-center text-2xl">
-
-                        {getFileIcon(
-                          file.file_name
-                        )}
-
-                      </div>
-
-
-                      {/* FILE DETAILS */}
-
-                      <div className="flex-1 min-w-0">
-
-                        <h3 className="font-semibold text-gray-900 truncate">
-
-                          {file.title ||
-                            file.file_name}
-
-                        </h3>
-
-                        <p className="mt-1 text-xs text-gray-500 truncate">
-
-                          {file.file_name}
-
-                        </p>
-
-                        <p className="mt-1 text-xs text-gray-400">
-
-                          {getFileType(
-                            file.file_name
-                          )}
-
-                        </p>
-
-                      </div>
-
-
-                      {/* VIEW BUTTON */}
-
-                      <span className="shrink-0 inline-flex items-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white group-hover:bg-gray-800">
-
-                        View
-
-                      </span>
-
-                    </a>
-
-                  );
-
-                })}
-
-              </div>
-
-            ) : (
-
-              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-7 text-center">
-
-                <div className="text-3xl mb-2">
-                  📁
+                <div className="text-center text-sm text-slate-400 py-4">
+                  No links added yet.
                 </div>
 
-                <p className="text-sm text-gray-500">
-                  No brochures or files uploaded yet.
-                </p>
+              )}
+
+            </div>
+
+            {/* =========================
+                BROCHURES / FILES
+            ========================== */}
+
+            {shareLinks.length > 0 && (
+
+              <div className="mt-8">
+
+                <div className="mb-4">
+
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Brochures & Files
+                  </h2>
+
+                  <p className="text-sm text-slate-500 mt-1">
+                    View our latest brochures and documents.
+                  </p>
+
+                </div>
+
+                <div className="space-y-3">
+
+                  {shareLinks.map((share) => (
+
+                    <button
+                      key={share.id}
+                      type="button"
+                      onClick={() =>
+                        openFile(share)
+                      }
+                      className="w-full text-left rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+                    >
+
+                      <div className="flex items-center gap-4">
+
+                        {/* FILE ICON */}
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-2xl">
+                          📄
+                        </div>
+
+                        {/* FILE INFO */}
+                        <div className="min-w-0 flex-1">
+
+                          <p className="font-semibold text-slate-900 truncate">
+                            {share.title}
+                          </p>
+
+                          <p className="mt-1 text-sm text-slate-500 truncate">
+                            {share.file_name}
+                          </p>
+
+                        </div>
+
+                        {/* VIEW ICON */}
+                        <div className="shrink-0">
+
+                          <span className="inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white">
+                            View
+                          </span>
+
+                        </div>
+
+                      </div>
+
+                    </button>
+
+                  ))}
+
+                </div>
 
               </div>
 
             )}
 
-          </section>
+          </div>
 
+        </div>
 
-          {/* =================================
-              FOOTER
-          ================================= */}
+        {/* =========================
+            CREATE YOUR OWN PROFILE
+        ========================== */}
 
-          <div className="mt-10 pt-6 border-t border-gray-100 text-center">
+        <div className="mt-6 bg-white rounded-2xl border border-slate-200 p-6 text-center shadow-sm">
 
-            <p className="text-xs text-gray-400">
-              Powered by InstaView
-            </p>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Create your own InstaView profile
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Put all your important links in one place and understand how people interact with your profile.
+          </p>
+
+          <div className="mt-4 flex justify-center">
+
+            <Link
+              href="/signup"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition"
+            >
+              Create Free Profile
+            </Link>
 
           </div>
 
-        </section>
+        </div>
 
       </div>
 
