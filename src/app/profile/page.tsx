@@ -1093,7 +1093,7 @@ export default function ProfilePage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-100">
         <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-slate-900" />
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[#E5E2FF] border-t-[#635BFF]" />
 
           <p className="mt-4 text-sm text-slate-500">
             Loading your profile...
@@ -1128,7 +1128,7 @@ export default function ProfilePage() {
 
             <Link
               href="/dashboard"
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-[#DCD8FF] px-4 py-2 text-sm font-medium text-[#5148E5] hover:bg-[#F1EFFF]"
             >
               Dashboard
             </Link>
@@ -1137,7 +1137,7 @@ export default function ProfilePage() {
               <Link
                 href={`/${username}`}
                 target="_blank"
-                className="hidden rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:block"
+                className="hidden rounded-lg border border-[#DCD8FF] px-4 py-2 text-sm font-medium text-[#5148E5] hover:bg-[#F1EFFF] sm:block"
               >
                 View Profile
               </Link>
@@ -1145,7 +1145,7 @@ export default function ProfilePage() {
 
             <button
               onClick={logout}
-              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+              className="rounded-lg border border-[#DCD8FF] px-4 py-2 text-sm font-medium text-[#635BFF] hover:bg-[#F1EFFF]"
             >
               Logout
             </button>
@@ -1230,7 +1230,7 @@ export default function ProfilePage() {
 
                 <div>
 
-                  <label className="inline-block cursor-pointer rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                  <label className="inline-block cursor-pointer rounded-lg border border-[#DCD8FF] px-4 py-2 text-sm font-medium text-[#635BFF] hover:bg-[#F1EFFF]">
 
                     {uploadingAvatar
                       ? "Uploading..."
@@ -1323,7 +1323,7 @@ export default function ProfilePage() {
                       )
                     }
                     placeholder="Your name"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/10"
                   />
                 </div>
 
@@ -1344,7 +1344,7 @@ export default function ProfilePage() {
                     rows={4}
                     maxLength={300}
                     placeholder="Tell people about yourself..."
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/10"
                   />
 
                   <p className="mt-1 text-xs text-slate-400">
@@ -1355,7 +1355,7 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-xl bg-slate-900 px-6 py-3 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  className="rounded-xl bg-[#635BFF] px-6 py-3 font-medium text-white shadow-sm hover:bg-[#5148E5] disabled:opacity-50"
                 >
                   {saving
                     ? "Saving..."
@@ -1384,11 +1384,11 @@ export default function ProfilePage() {
 
               {/* UPLOAD BOX */}
 
-              <div className="mt-6 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-6">
+              <div className="mt-6 rounded-2xl border-2 border-dashed border-[#DCD8FF] bg-[#F8F7FF] p-6">
 
                 <div className="text-center">
 
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-white text-2xl shadow-sm">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-[#F1EFFF] text-2xl shadow-sm">
                     📄
                   </div>
 
@@ -1420,7 +1420,7 @@ export default function ProfilePage() {
                       )
                     }
                     placeholder="Example: Product Brochure 2026"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-slate-500"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/10"
                   />
 
                 </div>
@@ -1430,7 +1430,7 @@ export default function ProfilePage() {
                 <label
                   className={`mt-4 flex items-center justify-center rounded-xl px-6 py-4 text-sm font-semibold text-white ${
                     uploadingFile
-                      ? "cursor-not-allowed bg-slate-400"
+                      ? "cursor-not-allowed bg-[#A9A5D8]"
                       : "cursor-pointer bg-slate-900 hover:bg-slate-800"
                   }`}
                 >
@@ -1524,7 +1524,7 @@ export default function ProfilePage() {
                                   {share.file_name}
                                 </p>
 
-                                <p className="mt-2 break-all text-xs text-indigo-600">
+                                <p className="mt-2 break-all text-xs text-[#635BFF]">
                                   {shareUrl}
                                 </p>
 
@@ -1539,7 +1539,7 @@ export default function ProfilePage() {
                                       share.share_code
                                     )
                                   }
-                                  className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                                  className="rounded-lg border border-[#DCD8FF] px-3 py-2 text-sm font-medium text-[#635BFF] hover:bg-[#F1EFFF]"
                                 >
                                   Copy
                                 </button>
@@ -1551,7 +1551,7 @@ export default function ProfilePage() {
                                       share.share_code
                                     )
                                   }
-                                  className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                                  className="rounded-lg bg-[#635BFF] px-3 py-2 text-sm font-medium text-white hover:bg-[#5148E5]"
                                 >
                                   View
                                 </button>
@@ -1563,7 +1563,7 @@ export default function ProfilePage() {
                                       share
                                     )
                                   }
-                                  className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700"
+                                  className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
                                 >
                                   Delete
                                 </button>
@@ -1613,7 +1613,7 @@ export default function ProfilePage() {
                     )
                   }
                   placeholder="Link title e.g. Instagram"
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/10"
                 />
 
                 <input
@@ -1625,13 +1625,13 @@ export default function ProfilePage() {
                     )
                   }
                   placeholder="https://example.com"
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-500"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/10"
                 />
 
                 <button
                   type="submit"
                   disabled={linkSaving}
-                  className="rounded-xl bg-slate-900 px-6 py-3 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  className="rounded-xl bg-[#635BFF] px-6 py-3 font-medium text-white shadow-sm hover:bg-[#5148E5] disabled:opacity-50"
                 >
                   {linkSaving
                     ? "Adding..."
@@ -1679,7 +1679,7 @@ export default function ProfilePage() {
                               link.url
                             )
                           }
-                          className="rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"
+                          className="rounded-lg border border-[#DCD8FF] px-3 py-2 text-sm text-[#635BFF] hover:bg-[#F1EFFF]"
                         >
                           Edit
                         </button>
@@ -1691,7 +1691,7 @@ export default function ProfilePage() {
                               link.id
                             )
                           }
-                          className="rounded-lg bg-red-600 px-3 py-2 text-sm text-white hover:bg-red-700"
+                          className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                         >
                           Delete
                         </button>
@@ -1768,7 +1768,7 @@ export default function ProfilePage() {
                     .map((link) => (
                       <div
                         key={link.id}
-                        className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
+                        className="rounded-lg bg-[#635BFF] px-3 py-2 text-sm text-white"
                       >
                         {link.title}
                       </div>
@@ -1785,7 +1785,7 @@ export default function ProfilePage() {
                     .map((share) => (
                       <div
                         key={share.id}
-                        className="rounded-lg bg-indigo-600 px-3 py-2 text-sm text-white"
+                        className="rounded-lg bg-[#5148E5] px-3 py-2 text-sm text-white"
                       >
                         {share.title}
                       </div>
@@ -1801,7 +1801,7 @@ export default function ProfilePage() {
                   <Link
                     href={`/${username}`}
                     target="_blank"
-                    className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    className="rounded-xl border border-[#DCD8FF] px-4 py-3 text-center text-sm font-medium text-[#635BFF] hover:bg-[#F1EFFF]"
                   >
                     View Public Profile
                   </Link>
@@ -1813,7 +1813,7 @@ export default function ProfilePage() {
                     copyProfileUrl
                   }
                   disabled={!username}
-                  className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl bg-[#635BFF] px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-[#5148E5] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Copy Profile Link
                 </button>
