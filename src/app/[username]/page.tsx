@@ -361,13 +361,13 @@ export default function PublicProfilePage() {
    */
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <main className="min-h-screen bg-[#F7F6FF] flex items-center justify-center">
 
         <div className="text-center">
 
-          <div className="w-10 h-10 mx-auto rounded-full border-4 border-slate-200 border-t-slate-900 animate-spin" />
+          <div className="w-10 h-10 mx-auto rounded-full border-4 border-[#E5E1FA] border-t-[#635BFF] animate-spin" />
 
-          <p className="mt-4 text-slate-500">
+          <p className="mt-4 text-[#64748B]">
             Loading profile...
           </p>
 
@@ -382,22 +382,22 @@ export default function PublicProfilePage() {
    */
   if (error || !profile) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
+      <main className="min-h-screen bg-[#F7F6FF] flex items-center justify-center px-6">
 
         <div className="text-center">
 
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-[#0B1026]">
             Profile not found
           </h1>
 
-          <p className="mt-2 text-slate-500">
+          <p className="mt-2 text-[#64748B]">
             {error ||
               "This profile does not exist."}
           </p>
 
           <Link
             href="/"
-            className="inline-block mt-6 rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white"
+            className="inline-block mt-6 rounded-xl bg-[#635BFF] px-5 py-3 text-sm font-medium text-white hover:bg-[#5148E5]"
           >
             Go Home
           </Link>
@@ -409,14 +409,29 @@ export default function PublicProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 py-10 px-4">
+    <main className="min-h-screen bg-[#F7F6FF] py-8 px-4">
 
       <div className="max-w-xl mx-auto">
 
-        <div className="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
+        {/* INSTAVIEW BRAND LOGO */}
+        <div className="flex justify-center mb-6">
+          <Link
+            href="/"
+            aria-label="InstaView Home"
+            className="inline-flex items-center justify-center"
+          >
+            <img
+              src="/logo-full.png"
+              alt="InstaView"
+              className="h-auto w-[180px] object-contain sm:w-[210px]"
+            />
+          </Link>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-lg border border-[#E5E1FA] overflow-hidden">
 
           {/* COVER */}
-          <div className="h-28 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400" />
+          <div className="h-28 bg-gradient-to-r from-[#635BFF] via-[#8B5CF6] to-[#EC4899]" />
 
           <div className="px-6 pb-8">
 
@@ -436,7 +451,7 @@ export default function PublicProfilePage() {
 
               ) : (
 
-                <div className="w-28 h-28 rounded-full bg-slate-200 border-4 border-white shadow-md flex items-center justify-center text-4xl">
+                <div className="w-28 h-28 rounded-full bg-[#F1EFFF] border-4 border-white shadow-md flex items-center justify-center text-4xl">
                   👤
                 </div>
 
@@ -447,17 +462,17 @@ export default function PublicProfilePage() {
             {/* PROFILE INFO */}
             <div className="text-center mt-4">
 
-              <h1 className="text-2xl font-bold text-slate-900">
+              <h1 className="text-2xl font-bold text-[#0B1026]">
                 {profile.display_name ||
                   profile.username}
               </h1>
 
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="text-sm text-[#64748B] mt-1">
                 @{profile.username}
               </p>
 
               {profile.bio && (
-                <p className="text-slate-600 mt-4 leading-relaxed">
+                <p className="text-[#64748B] mt-4 leading-relaxed">
                   {profile.bio}
                 </p>
               )}
@@ -485,7 +500,7 @@ export default function PublicProfilePage() {
                         link
                       );
                     }}
-                    className="block w-full rounded-xl border border-slate-200 bg-white px-5 py-4 text-center font-medium text-slate-800 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+                    className="block w-full rounded-xl border border-[#E5E1FA] bg-white px-5 py-4 text-center font-medium text-[#18213A] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
                   >
                     {link.title}
                   </a>
@@ -509,11 +524,11 @@ export default function PublicProfilePage() {
 
                 <div className="mb-4">
 
-                  <h2 className="text-lg font-bold text-slate-900">
+                  <h2 className="text-lg font-bold text-[#0B1026]">
                     Brochures & Files
                   </h2>
 
-                  <p className="text-sm text-slate-500 mt-1">
+                  <p className="text-sm text-[#64748B] mt-1">
                     View our latest brochures and documents.
                   </p>
 
@@ -532,22 +547,22 @@ export default function PublicProfilePage() {
                             share
                           )
                         }
-                        className="w-full text-left rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+                        className="w-full text-left rounded-xl border border-[#E5E1FA] bg-white px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
                       >
 
                         <div className="flex items-center gap-4">
 
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-2xl">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#F1EFFF] text-2xl">
                             📄
                           </div>
 
                           <div className="min-w-0 flex-1">
 
-                            <p className="font-semibold text-slate-900 truncate">
+                            <p className="font-semibold text-[#0B1026] truncate">
                               {share.title}
                             </p>
 
-                            <p className="mt-1 text-sm text-slate-500 truncate">
+                            <p className="mt-1 text-sm text-[#64748B] truncate">
                               {share.file_name}
                             </p>
 
@@ -555,7 +570,7 @@ export default function PublicProfilePage() {
 
                           <div className="shrink-0">
 
-                            <span className="inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white">
+                            <span className="inline-flex items-center rounded-lg bg-[#635BFF] px-3 py-2 text-xs font-medium text-white hover:bg-[#5148E5]">
                               View
                             </span>
 
@@ -581,11 +596,11 @@ export default function PublicProfilePage() {
         {/* CREATE PROFILE */}
         <div className="mt-6 bg-white rounded-2xl border border-slate-200 p-6 text-center shadow-sm">
 
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-[#0B1026]">
             Create your own InstaView profile
           </h2>
 
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-[#64748B]">
             Put all your important links in one place and understand how people interact with your profile.
           </p>
 
