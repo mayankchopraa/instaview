@@ -738,7 +738,7 @@ export default function DashboardPage() {
 
         <div className="text-center">
 
-          <div className="w-10 h-10 border-4 border-slate-300 border-t-slate-900 rounded-full animate-spin mx-auto" />
+          <div className="w-10 h-10 border-4 border-[#E5E1FA] border-t-[#635BFF] rounded-full animate-spin mx-auto" />
 
           <p className="mt-4 text-slate-600">
             Loading dashboard...
@@ -776,7 +776,7 @@ export default function DashboardPage() {
                 href={`/${profile.username}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg bg-[#635BFF] px-6 text-sm font-semibold text-white hover:bg-[#5148E5]"
+                className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg bg-[#635BFF] px-6 text-sm font-semibold text-white transition hover:bg-[#5148E5]"
               >
                 View Profile
               </a>
@@ -784,14 +784,14 @@ export default function DashboardPage() {
 
             <Link
               href="/profile"
-              className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg border border-[#D9DEEA] bg-white px-6 text-sm font-semibold text-[#18213A] hover:border-[#635BFF] hover:text-[#635BFF]"
+              className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg border border-[#E5E1FA] bg-[#F7F6FF] px-6 text-sm font-semibold text-[#635BFF] transition hover:bg-[#EEEAFE] hover:border-[#635BFF]"
             >
               Edit Profile
             </Link>
 
             <button
               onClick={logout}
-              className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg border border-red-200 bg-white px-6 text-sm font-semibold text-red-600 hover:bg-red-50"
+              className="inline-flex h-11 items-center justify-center whitespace-nowrap rounded-lg border border-[#E5E1FA] bg-white px-6 text-sm font-semibold text-[#635BFF] transition hover:bg-[#F7F6FF] hover:border-[#635BFF]"
             >
               Logout
             </button>
@@ -862,7 +862,7 @@ export default function DashboardPage() {
                   <Link
                     href={`/${profile.username}`}
                     target="_blank"
-                    className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
+                    className="px-5 py-2.5 rounded-lg bg-[#635BFF] text-white text-sm font-semibold transition hover:bg-[#5148E5]"
                   >
                     View Profile
                   </Link>
@@ -871,7 +871,7 @@ export default function DashboardPage() {
                     onClick={
                       copyProfileLink
                     }
-                    className="px-5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50"
+                    className="px-5 py-2.5 rounded-lg border border-[#E5E1FA] bg-[#F7F6FF] text-[#635BFF] text-sm font-semibold transition hover:bg-[#EEEAFE] hover:border-[#635BFF]"
                   >
                     Copy Link
                   </button>
@@ -1489,7 +1489,7 @@ export default function DashboardPage() {
 
               <Link
                 href="/profile"
-                className="px-5 py-2.5 border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50"
+                className="px-5 py-2.5 border border-[#E5E1FA] bg-[#F7F6FF] text-[#635BFF] rounded-lg text-sm font-semibold transition hover:bg-[#EEEAFE] hover:border-[#635BFF]"
               >
                 Edit Profile
               </Link>
@@ -1498,7 +1498,7 @@ export default function DashboardPage() {
                 <Link
                   href={`/${profile.username}`}
                   target="_blank"
-                  className="px-5 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800"
+                  className="px-5 py-2.5 bg-[#635BFF] text-white rounded-lg text-sm font-semibold transition hover:bg-[#5148E5]"
                 >
                   View Live Profile
                 </Link>
