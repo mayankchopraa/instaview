@@ -1118,11 +1118,16 @@ export default function ProfilePage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
 
           <Link
-            href="/"
-            className="text-xl font-bold text-slate-900"
-          >
-            InstaView
-          </Link>
+  href="/"
+  className="flex items-center"
+  aria-label="InstaView Home"
+>
+  <img
+    src="/logo-full.png"
+    alt="InstaView"
+    className="h-auto w-[150px] object-contain sm:w-[175px]"
+  />
+</Link>
 
           <div className="flex items-center gap-3">
 
