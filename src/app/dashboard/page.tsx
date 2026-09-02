@@ -87,6 +87,8 @@ export default function DashboardPage() {
   const [errorMessage, setErrorMessage] =
     useState("");
 
+  const [selectedDate, setSelectedDate] = useState("");
+
   useEffect(() => {
     loadDashboard();
   }, []);
@@ -428,10 +430,34 @@ export default function DashboardPage() {
   }
 
   /*
+   * DATE FILTER
+   */
+  function isSameSelectedDate(dateString: string) {
+    if (!selectedDate) return true;
+
+    const date = new Date(dateString);
+    const localDate = `${date.getFullYear()}-${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+    return localDate === selectedDate;
+  }
+
+  const filteredProfileViewsData =
+    profileViewsData.filter((item) =>
+      isSameSelectedDate(item.viewed_at)
+    );
+
+  const filteredAnalytics =
+    analytics.filter((item) =>
+      isSameSelectedDate(item.created_at)
+    );
+
+  /*
    * PROFILE VIEWS
    */
   const profileViews =
-    profileViewsData.length;
+    filteredProfileViewsData.length;
 
   /*
    * IDENTIFIED VISITORS
@@ -439,7 +465,7 @@ export default function DashboardPage() {
   const identifiedViewerIds =
     Array.from(
       new Set(
-        profileViewsData
+        filteredProfileViewsData
           .filter(
             (item) =>
               item.visitor_user_id
@@ -458,7 +484,7 @@ export default function DashboardPage() {
    * ANONYMOUS VIEWS
    */
   const anonymousViews =
-    profileViewsData.filter(
+    filteredProfileViewsData.filter(
       (item) =>
         !item.visitor_user_id
     ).length;
@@ -471,7 +497,7 @@ export default function DashboardPage() {
     number
   > = {};
 
-  profileViewsData
+  filteredProfileViewsData
     .filter(
       (item) =>
         item.visitor_user_id
@@ -496,7 +522,7 @@ export default function DashboardPage() {
    * LINK CLICKS
    */
   const linkClicks =
-    analytics.filter(
+    filteredAnalytics.filter(
       (item) =>
         item.interaction_type ===
         "link_click"
@@ -506,7 +532,7 @@ export default function DashboardPage() {
    * FILE CLICKS
    */
   const fileClicks =
-    analytics.filter(
+    filteredAnalytics.filter(
       (item) =>
         item.interaction_type ===
         "file_click"
@@ -535,7 +561,7 @@ export default function DashboardPage() {
    * TOP LINKS
    */
   const linkStats =
-    analytics
+    filteredAnalytics
       .filter(
         (item) =>
           item.interaction_type ===
@@ -571,7 +597,7 @@ export default function DashboardPage() {
    * which brochure/file was clicked.
    */
   const fileStats =
-    analytics
+    filteredAnalytics
       .filter(
         (item) =>
           item.interaction_type ===
@@ -607,7 +633,7 @@ export default function DashboardPage() {
     useMemo<ActivityItem[]>(
       () => {
         const profileActivities: ActivityItem[] =
-          profileViewsData.map(
+          filteredProfileViewsData.map(
             (item) => ({
               id: `profile-${item.id}`,
               date: item.viewed_at,
@@ -621,7 +647,7 @@ export default function DashboardPage() {
           );
 
         const interactionActivities: ActivityItem[] =
-          analytics
+          filteredAnalytics
             .filter(
               (item) =>
                 item.interaction_type ===
@@ -661,8 +687,8 @@ export default function DashboardPage() {
           .slice(0, 15);
       },
       [
-        profileViewsData,
-        analytics,
+        filteredProfileViewsData,
+        filteredAnalytics,
       ]
     );
 
@@ -734,7 +760,7 @@ export default function DashboardPage() {
    */
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <main className="min-h-screen bg-[#F7F6FF] flex items-center justify-center">
 
         <div className="text-center">
 
@@ -751,7 +777,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-[#F7F6FF]">
 
       {/* HEADER */}
       <header className="border-b border-[#E5E7EB] bg-white">
@@ -816,6 +842,44 @@ export default function DashboardPage() {
           </p>
 
         </div>
+
+        {/* DATE FILTER */}
+        <section className="mb-8 rounded-2xl border border-[#E5E1FA] bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                Analytics by Date
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Choose a date to see that day's profile views, link clicks and file opens.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <label htmlFor="analytics-date" className="text-sm font-medium text-slate-600">
+                Select date
+              </label>
+
+              <input
+                id="analytics-date"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="rounded-xl border border-[#DCD8FF] bg-white px-4 py-2.5 text-sm font-medium text-[#18213A] outline-none transition focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/10"
+              />
+
+              {selectedDate && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate("")}
+                  className="rounded-xl border border-[#DCD8FF] bg-[#F7F6FF] px-4 py-2.5 text-sm font-semibold text-[#635BFF] transition hover:bg-[#EEEAFE]"
+                >
+                  All Dates
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
 
         {errorMessage && (
           <div className="mb-8 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
@@ -1029,7 +1093,7 @@ export default function DashboardPage() {
 
           <div className="divide-y divide-slate-100">
 
-            {profileViewsData.length === 0 ? (
+            {filteredProfileViewsData.length === 0 ? (
 
               <div className="p-10 text-center text-slate-500">
                 No profile views yet.
@@ -1037,7 +1101,7 @@ export default function DashboardPage() {
 
             ) : (
 
-              profileViewsData
+              filteredProfileViewsData
                 .slice(0, 20)
                 .map((item) => {
 
