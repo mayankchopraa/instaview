@@ -87,7 +87,16 @@ export default function DashboardPage() {
   const [errorMessage, setErrorMessage] =
     useState("");
 
-  const [selectedDate, setSelectedDate] = useState("");
+  // DATE RANGE FILTER
+  const [dateRange, setDateRange] = useState<
+    "all" | "today" | "yesterday" | "7days" | "30days" | "custom"
+  >("all");
+
+  const [customStartDate, setCustomStartDate] =
+    useState("");
+
+  const [customEndDate, setCustomEndDate] =
+    useState("");
 
   useEffect(() => {
     loadDashboard();
@@ -430,28 +439,95 @@ export default function DashboardPage() {
   }
 
   /*
-   * DATE FILTER
+   * DATE RANGE FILTER
    */
-  function isSameSelectedDate(dateString: string) {
-    if (!selectedDate) return true;
+  function getDateKey(value: string | Date) {
+    const date = value instanceof Date ? value : new Date(value);
 
-    const date = new Date(dateString);
-    const localDate = `${date.getFullYear()}-${String(
+    return `${date.getFullYear()}-${String(
       date.getMonth() + 1
-    ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-    return localDate === selectedDate;
+    ).padStart(2, "0")}-${String(
+      date.getDate()
+    ).padStart(2, "0")}`;
   }
 
-  const filteredProfileViewsData =
-    profileViewsData.filter((item) =>
-      isSameSelectedDate(item.viewed_at)
-    );
+  function getRangeDates() {
+    const now = new Date();
 
-  const filteredAnalytics =
-    analytics.filter((item) =>
-      isSameSelectedDate(item.created_at)
-    );
+    if (dateRange === "all") {
+      return null;
+    }
+
+    if (dateRange === "custom") {
+      if (!customStartDate || !customEndDate) {
+        return null;
+      }
+
+      return {
+        start: customStartDate,
+        end: customEndDate,
+      };
+    }
+
+    const start = new Date(now.getTime());
+    const end = new Date(now.getTime());
+
+    if (dateRange === "yesterday") {
+      start.setDate(start.getDate() - 1);
+      end.setDate(end.getDate() - 1);
+    } else if (dateRange === "7days") {
+      start.setDate(start.getDate() - 6);
+    } else if (dateRange === "30days") {
+      start.setDate(start.getDate() - 29);
+    }
+
+    return {
+      start: getDateKey(start),
+      end: getDateKey(end),
+    };
+  }
+
+  const rangeDates = getRangeDates();
+
+  const filteredProfileViewsData = useMemo(() => {
+    if (!rangeDates) {
+      return profileViewsData;
+    }
+
+    return profileViewsData.filter((item) => {
+      const date = getDateKey(item.viewed_at);
+
+      return (
+        date >= rangeDates.start &&
+        date <= rangeDates.end
+      );
+    });
+  }, [
+    profileViewsData,
+    dateRange,
+    customStartDate,
+    customEndDate,
+  ]);
+
+  const filteredAnalytics = useMemo(() => {
+    if (!rangeDates) {
+      return analytics;
+    }
+
+    return analytics.filter((item) => {
+      const date = getDateKey(item.created_at);
+
+      return (
+        date >= rangeDates.start &&
+        date <= rangeDates.end
+      );
+    });
+  }, [
+    analytics,
+    dateRange,
+    customStartDate,
+    customEndDate,
+  ]);
 
   /*
    * PROFILE VIEWS
@@ -760,7 +836,7 @@ export default function DashboardPage() {
    */
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#F7F6FF] flex items-center justify-center">
+      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
 
         <div className="text-center">
 
@@ -777,7 +853,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F7F6FF]">
+    <main className="min-h-screen bg-slate-50">
 
       {/* HEADER */}
       <header className="border-b border-[#E5E7EB] bg-white">
@@ -843,49 +919,111 @@ export default function DashboardPage() {
 
         </div>
 
-        {/* DATE FILTER */}
-        <section className="mb-8 rounded-2xl border border-[#E5E1FA] bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Analytics by Date
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Choose a date to see that day's profile views, link clicks and file opens.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <label htmlFor="analytics-date" className="text-sm font-medium text-slate-600">
-                Select date
-              </label>
-
-              <input
-                id="analytics-date"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="rounded-xl border border-[#DCD8FF] bg-white px-4 py-2.5 text-sm font-medium text-[#18213A] outline-none transition focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/10"
-              />
-
-              {selectedDate && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate("")}
-                  className="rounded-xl border border-[#DCD8FF] bg-[#F7F6FF] px-4 py-2.5 text-sm font-semibold text-[#635BFF] transition hover:bg-[#EEEAFE]"
-                >
-                  All Dates
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
-
         {errorMessage && (
           <div className="mb-8 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
             {errorMessage}
           </div>
         )}
+
+        {/* DATE RANGE FILTER */}
+        <section className="mb-8 bg-white rounded-2xl border border-[#E5E1FA] shadow-sm p-6">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Analytics by Date
+              </h2>
+
+              <p className="text-sm text-slate-500 mt-1">
+                Choose a date range to view your analytics.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {[
+                ["all", "All Dates"],
+                ["today", "Today"],
+                ["yesterday", "Yesterday"],
+                ["7days", "Last 7 Days"],
+                ["30days", "Last 30 Days"],
+                ["custom", "Custom Range"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() =>
+                    setDateRange(
+                      value as
+                        | "all"
+                        | "today"
+                        | "yesterday"
+                        | "7days"
+                        | "30days"
+                        | "custom"
+                    )
+                  }
+                  className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
+                    dateRange === value
+                      ? "bg-[#635BFF] text-white"
+                      : "border border-[#E5E1FA] bg-[#F7F6FF] text-[#635BFF] hover:bg-[#EEEAFE] hover:border-[#635BFF]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {dateRange === "custom" && (
+            <div className="mt-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    From
+                  </label>
+
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) =>
+                      setCustomStartDate(e.target.value)
+                    }
+                    className="w-full h-11 rounded-lg border border-[#DCD8FF] px-3 text-sm text-slate-700 outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/10"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    To
+                  </label>
+
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    min={customStartDate || undefined}
+                    onChange={(e) =>
+                      setCustomEndDate(e.target.value)
+                    }
+                    className="w-full h-11 rounded-lg border border-[#DCD8FF] px-3 text-sm text-slate-700 outline-none focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/10"
+                  />
+                </div>
+              </div>
+
+              {customStartDate &&
+                customEndDate &&
+                customEndDate < customStartDate && (
+                  <p className="mt-3 text-sm text-red-600">
+                    The To date must be the same as or later than the From date.
+                  </p>
+                )}
+
+              {rangeDates && (
+                <p className="mt-3 text-xs text-slate-400">
+                  Showing analytics from {rangeDates.start} to {rangeDates.end}.
+                </p>
+              )}
+            </div>
+          )}
+        </section>
 
         {/* LIVE PROFILE */}
         <section className="mb-8 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
@@ -1093,7 +1231,7 @@ export default function DashboardPage() {
 
           <div className="divide-y divide-slate-100">
 
-            {filteredProfileViewsData.length === 0 ? (
+            {profileViewsData.length === 0 ? (
 
               <div className="p-10 text-center text-slate-500">
                 No profile views yet.
@@ -1101,7 +1239,7 @@ export default function DashboardPage() {
 
             ) : (
 
-              filteredProfileViewsData
+              profileViewsData
                 .slice(0, 20)
                 .map((item) => {
 
